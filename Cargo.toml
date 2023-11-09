@@ -1,0 +1,11 @@
+[package]
+name = "advent-of-code-2023"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# anstyle version control is for clap=4.2.7 and rust=1.69.0
+anstyle = "=1.0.0"
+anstyle-parse = "=0.2.0"
+clap = { version = "=4.2.7", features = ["derive"] }
+color-eyre = "=0.6.2"

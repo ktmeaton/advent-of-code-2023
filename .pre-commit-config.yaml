@@ -1,0 +1,39 @@
+repos:
+
+  # Text and YAML Lint
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: resources/issues.tsv
+        args: [--markdown-linebreak-ext=md]
+
+      - id: end-of-file-fixer
+        exclude: ^.tests/
+
+      - id: check-yaml
+        exclude: ^.tests/
+
+      - id: check-added-large-files
+        args: ['--maxkb=10000']
+
+      - id: mixed-line-ending
+        exclude: ^.tests/
+        args: [--fix=lf]
+
+      - id: detect-private-key
+
+  # Markdown lint
+  - repo: https://github.com/igorshubovych/markdownlint-cli
+    rev: v0.34.0
+    hooks:
+      - id: markdownlint
+        args: [--config=.github/markdown_lint.yaml]
+
+  # Rust lint
+  - repo: https://github.com/doublify/pre-commit-rust
+    rev: v1.0
+    hooks:
+    -   id: fmt
+    -   id: cargo-check
+    -   id: clippy
