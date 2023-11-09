@@ -1,4 +1,4 @@
-use crate::Day;
+use crate::day::Day;
 use clap::{Parser, ValueEnum};
 use serde::Serialize;
 use std::default::Default;
@@ -14,8 +14,8 @@ use std::default::Default;
 /// ██╔══██║██║░░██║░╚████╔╝░██╔══╝░░██║╚████║░░░██║░░░  ██║░░██║██╔══╝░░  ██║░░██╗██║░░██║██║░░██║██╔══╝░░  ██╔══╝░░██║░░██║██╔══╝░░░╚═══██╗
 /// ██║░░██║██████╔╝░░╚██╔╝░░███████╗██║░╚███║░░░██║░░░  ╚█████╔╝██║░░░░░  ╚█████╔╝╚█████╔╝██████╔╝███████╗  ███████╗╚█████╔╝███████╗██████╔╝
 /// ╚═╝░░╚═╝╚═════╝░░░░╚═╝░░░╚══════╝╚═╝░░╚══╝░░░╚═╝░░░  ░╚════╝░╚═╝░░░░░  ░╚════╝░░╚════╝░╚═════╝░╚══════╝  ╚══════╝░╚════╝░╚══════╝╚═════╝░
-#[derive(Parser, Debug)]
-#[clap(name = "Advent of Code 2023", trailing_var_arg = true)]
+#[derive(Clone, Parser, Debug)]
+#[clap(name = "advent-of-code-2023", trailing_var_arg = true)]
 #[clap(author, version)]
 #[clap(verbatim_doc_comment)]
 pub struct Cli {

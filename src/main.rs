@@ -1,4 +1,3 @@
-use advent_of_code_2023::cli::Cli;
 use clap::Parser;
 use color_eyre::eyre::{Report, Result};
 
@@ -7,7 +6,7 @@ fn main() -> Result<(), Report> {
     // CLI Setup
 
     // Parse CLI Parameters
-    let args = Cli::parse();
+    let args = advent_of_code_2023::cli::Cli::parse();
 
     // initialize color_eyre crate for colorized logs
     color_eyre::install()?;
@@ -17,6 +16,8 @@ fn main() -> Result<(), Report> {
 
     // initialize env_logger crate for logging/verbosity level
     env_logger::init();
+
+    advent_of_code_2023::run(&args)?;
 
     Ok(())
 }

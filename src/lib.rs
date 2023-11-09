@@ -1,18 +1,29 @@
 pub mod cli;
+pub mod day;
 
-use clap::ValueEnum;
-use serde::Serialize;
+use crate::cli::Cli;
+use crate::day::*;
+use color_eyre::eyre::{Report, Result};
+use log::info;
+use strum::IntoEnumIterator;
 
-/// Calendar Day
-#[derive(Clone, Debug, Serialize, ValueEnum)]
-pub enum Day {
-    D1,
-}
+/// Run calendar day.
+pub fn run(args: &Cli) -> Result<(), Report> {
+    if args.day == Day::All {
+        for day in Day::iter() {
+            if day == Day::All {
+                continue;
+            }
+            let mut day_args = (*args).clone();
+            day_args.day = day;
+            run(&day_args)?;
+        }
+    } else {
+        info!("Day {}", args.day as u8);
+    }
 
-impl std::fmt::Display for Day {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        // Convert to lowercase for RUST_LOG env var compatibility
-        let lowercase = format!("{:?}", self).to_lowercase();
-        write!(f, "{lowercase}")
+    match args.day {
+        Day::D1 => d1::run(),
+        _ => Ok(()),
     }
 }
