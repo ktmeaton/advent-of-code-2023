@@ -9,3 +9,5 @@ anstyle = "=1.0.0"
 anstyle-parse = "=0.2.0"
 clap = { version = "=4.2.7", features = ["derive"] }
 color-eyre = "=0.6.2"
+env_logger = "=0.10.0"
+serde = { version = "=1.0.163", features = ["derive"] }
