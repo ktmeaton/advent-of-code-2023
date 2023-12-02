@@ -1,14 +1,15 @@
 pub mod d1;
+pub mod d2;
 
 use clap::ValueEnum;
-use serde::Serialize;
 use strum::EnumIter;
 
 /// Calendar Day
-#[derive(Clone, Copy, Debug, EnumIter, Serialize, PartialEq, ValueEnum)]
+#[derive(Clone, Copy, Debug, EnumIter, PartialEq, ValueEnum)]
 pub enum Day {
     All = 0,
     D1 = 1,
+    D2 = 2,
 }
 
 impl std::fmt::Display for Day {

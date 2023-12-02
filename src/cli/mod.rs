@@ -1,6 +1,5 @@
 use crate::day::Day;
 use clap::{Parser, ValueEnum};
-use serde::Serialize;
 use std::default::Default;
 
 // ----------------------------------------------------------------------------
@@ -35,7 +34,7 @@ pub struct Cli {
 // Verbosity
 // -----------------------------------------------------------------------------
 
-#[derive(Clone, Debug, Default, Serialize, ValueEnum)]
+#[derive(Clone, Debug, Default, ValueEnum)]
 pub enum Verbosity {
     #[default]
     Info,

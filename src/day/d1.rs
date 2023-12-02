@@ -17,8 +17,7 @@ pub fn run() -> Result<(), Report> {
         ("five",  "5"), ("six", "6"), ("seven", "7"), ("eight", "8"), ("nine", "9")];
 
     // read in the input (calibration document)
-    let input = "data/d1.txt";
-    let content = std::fs::read_to_string(input)?;
+    let content = std::fs::read_to_string("data/d1.txt")?;
     let lines = content.split("\n").collect_vec();
 
     let mut p1_total = 0;

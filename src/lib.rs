@@ -24,6 +24,7 @@ pub fn run(args: &Cli) -> Result<(), Report> {
 
     match args.day {
         Day::D1 => d1::run(),
+        Day::D2 => d2::run(),
         _ => Ok(()),
     }
 }
