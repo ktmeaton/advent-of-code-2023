@@ -1,3 +1,4 @@
+# Fully build the rebar application, for all supported arch and containers
 name: Build
 
 on:
@@ -9,56 +10,34 @@ on:
       - '*'
   release:
     types: [published]
+  workflow_call:
 
 jobs:
 
-  build:
-
-    runs-on: ubuntu-latest
-
+  # ---------------------------------------------------------------------------
+  compile:
+    uses: ./.github/workflows/compile.yaml
     strategy:
       fail-fast: false
       matrix:
-        arch:
-          #- aarch64-apple-darwin
-          #- aarch64-unknown-linux-gnu
-          #- aarch64-unknown-linux-musl
-          #- x86_64-apple-darwin
-          - x86_64-pc-windows-gnu
-          - x86_64-unknown-linux-gnu
-          - x86_64-unknown-linux-musl
+        include:
+          # Linux
+          - arch: x86_64-unknown-linux-musl
+            os: ubuntu-latest
+            binary: advent-of-code
+          # Linux cross-compile to windows
+          - arch: x86_64-pc-windows-gnu
+            os: ubuntu-latest
+            binary: advent-of-code.exe
+          # macOS
+          - arch: x86_64-apple-darwin
+            os: macos-latest
+            binary: advent-of-code
+    with:
+      arch: ${{ matrix.arch }}
+      os: ${{ matrix.os }}
+      binary: ${{ matrix.binary }}
 
-    steps:
-      - name: checkout repo
-        uses: actions/checkout@v3
-
-      - name: setup rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: 1.69.0
-
-      - name: install windows dependencies
-        if: ${{ matrix.arch == 'x86_64-pc-windows-gnu' }}
-        run: sudo apt install gcc-mingw-w64
-
-      - name: install target
-        run: rustup target add ${{ matrix.arch }}
-
-      - name: build
-        run: |
-          cargo build --release --all-features --target ${{ matrix.arch }}
-          cp target/${{ matrix.arch }}/release/advent-of-code-2023 .
-
-      - name: compress with upx
-        uses: crazy-max/ghaction-upx@v3
-        with:
-          version: v4.1.0
-          files: |
-            advent-of-code-2023
-          args: --best --lzma
-
-      - name: upload binary
-        uses: actions/upload-artifact@v3
-        with:
-          name: advent-of-code-2023_${{ matrix.arch }}
-          path: advent-of-code-2023
+  # ---------------------------------------------------------------------------
+  docker:
+    uses: ./.github/workflows/docker.yaml

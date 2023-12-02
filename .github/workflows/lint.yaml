@@ -25,10 +25,16 @@ jobs:
         with:
           python-version: '3.9'
 
+      - name: check rust
+        run: |
+          rustup --version
+          rustc --version
+          cargo --version
+
       - name: setup rust
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: 1.69.0
+          toolchain: 1.74.0
 
       - name: setup linters
         run: |
