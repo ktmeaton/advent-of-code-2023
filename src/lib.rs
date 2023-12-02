@@ -1,30 +1,81 @@
-pub mod cli;
 pub mod day;
 
-use crate::cli::Cli;
+use clap::{Parser, ValueEnum};
 use crate::day::*;
-use color_eyre::eyre::{Report, Result};
+use color_eyre::eyre::{eyre, Report, Result};
 use log::info;
-use strum::IntoEnumIterator;
+use std::default::Default;
+use std::str::FromStr;
 
-/// Run calendar day.
+// ----------------------------------------------------------------------------
+// Puzzle dispatcher
+// ----------------------------------------------------------------------------
+
+/// Run puzzle day and part.
 pub fn run(args: &Cli) -> Result<(), Report> {
-    if args.day == Day::All {
-        for day in Day::iter() {
-            if day == Day::All {
-                continue;
-            }
-            let mut day_args = (*args).clone();
-            day_args.day = day;
-            run(&day_args)?;
-        }
-    } else {
-        info!("Day {}", args.day as u8);
-    }
 
-    match args.day {
-        Day::D1 => d1::run(),
-        Day::D2 => d2::run(),
-        _ => Ok(()),
+    info!("Day {}", args.day);
+
+    let part = <Part as FromStr>::from_str(&args.part)?;
+
+    match args.day.as_ref() {
+        "1" => day_1::run(&part)?,
+        "2" => day_2::run(&part)?,
+        _ => return Err(eyre!("Day {} is not implemented yet.", args.day)),
+    };
+
+    Ok(())
+}
+
+// ----------------------------------------------------------------------------
+// CLI Entry Point
+// ----------------------------------------------------------------------------
+
+// Text Art Generator: https://fsymbols.com/generators/carty/
+/// ░█████╗░██████╗░██╗░░░██╗███████╗███╗░░██╗████████╗  ░█████╗░███████╗  ░█████╗░░█████╗░██████╗░███████╗  ██████╗░░█████╗░██████╗░██████╗░
+/// ██╔══██╗██╔══██╗██║░░░██║██╔════╝████╗░██║╚══██╔══╝  ██╔══██╗██╔════╝  ██╔══██╗██╔══██╗██╔══██╗██╔════╝  ╚════██╗██╔══██╗╚════██╗╚════██╗
+/// ███████║██║░░██║╚██╗░██╔╝█████╗░░██╔██╗██║░░░██║░░░  ██║░░██║█████╗░░  ██║░░╚═╝██║░░██║██║░░██║█████╗░░  ░░███╔═╝██║░░██║░░███╔═╝░█████╔╝
+/// ██╔══██║██║░░██║░╚████╔╝░██╔══╝░░██║╚████║░░░██║░░░  ██║░░██║██╔══╝░░  ██║░░██╗██║░░██║██║░░██║██╔══╝░░  ██╔══╝░░██║░░██║██╔══╝░░░╚═══██╗
+/// ██║░░██║██████╔╝░░╚██╔╝░░███████╗██║░╚███║░░░██║░░░  ╚█████╔╝██║░░░░░  ╚█████╔╝╚█████╔╝██████╔╝███████╗  ███████╗╚█████╔╝███████╗██████╔╝
+/// ╚═╝░░╚═╝╚═════╝░░░░╚═╝░░░╚══════╝╚═╝░░╚══╝░░░╚═╝░░░  ░╚════╝░╚═╝░░░░░  ░╚════╝░░╚════╝░╚═════╝░╚══════╝  ╚══════╝░╚════╝░╚══════╝╚═════╝░
+#[derive(Clone, Parser, Debug)]
+#[clap(name = "advent-of-code-2023", trailing_var_arg = true)]
+#[clap(author, version)]
+#[clap(verbatim_doc_comment)]
+pub struct Cli {
+
+    /// Output verbosity level.
+    #[clap(short = 'v', long)]
+    #[clap(value_enum, default_value_t = Verbosity::default())]
+    #[clap(hide_possible_values = false)]
+    pub verbosity: Verbosity,
+
+    /// Puzzle day number.
+    #[clap(short = 'd', long, required = true)]
+    pub day: String,
+
+    /// Puzzle part.
+    #[clap(short = 'p', long, required = true)]
+    pub part: String,
+}
+
+// -----------------------------------------------------------------------------
+// Verbosity
+// -----------------------------------------------------------------------------
+
+#[derive(Clone, Debug, Default, ValueEnum)]
+pub enum Verbosity {
+    #[default]
+    Info,
+    Warn,
+    Debug,
+    Error,
+}
+
+impl std::fmt::Display for Verbosity {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        // Convert to lowercase for RUST_LOG env var compatibility
+        let lowercase = format!("{:?}", self).to_lowercase();
+        write!(f, "{lowercase}")
     }
 }

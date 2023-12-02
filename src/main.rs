@@ -6,7 +6,7 @@ fn main() -> Result<(), Report> {
     // CLI Setup
 
     // Parse CLI Parameters
-    let args = advent_of_code_2023::cli::Cli::parse();
+    let args = advent_of_code_2023::Cli::parse();
 
     // initialize color_eyre crate for colorized logs
     color_eyre::install()?;

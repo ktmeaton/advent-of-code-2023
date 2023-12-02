@@ -1,21 +1,27 @@
-pub mod d1;
-pub mod d2;
+pub mod day_1;
+pub mod day_2;
+use std::str::FromStr;
 
 use clap::ValueEnum;
-use strum::EnumIter;
+use color_eyre::eyre::{eyre, Report, Result};
 
-/// Calendar Day
-#[derive(Clone, Copy, Debug, EnumIter, PartialEq, ValueEnum)]
-pub enum Day {
-    All = 0,
-    D1 = 1,
-    D2 = 2,
+
+#[derive(Clone, Copy, Debug, PartialEq, ValueEnum)]
+pub enum Part {
+    Part1,
+    Part2,
 }
 
-impl std::fmt::Display for Day {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        // Convert to lowercase for RUST_LOG env var compatibility
-        let lowercase = format!("{:?}", self).to_lowercase();
-        write!(f, "{lowercase}")
+impl FromStr for Part {
+    type Err = Report;
+
+    fn from_str(part: &str) -> Result<Self, Report> {
+        let part = match part {
+            "1" => Part::Part1,
+            "2" => Part::Part2,
+            _   => return Err(eyre!("Unknown part {part:?}")),
+        };
+
+        Ok(part)
     }
 }

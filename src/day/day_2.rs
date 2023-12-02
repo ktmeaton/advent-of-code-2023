@@ -1,15 +1,25 @@
 use aho_corasick::AhoCorasick;
 use color_eyre::eyre::{Report, Result};
+use crate::day::Part;
 use itertools::Itertools;
 use log::{debug, info};
 use std::collections::BTreeMap;
 
-/// Part 1. Colorful Cubes
+/// Day 2. Cubes of Power
 /// 
 /// The Elf will reach into the bag, grab a handful of random cubes, show 
 /// them to you, and then put them back in the bag. He'll do this a few 
 /// times per game.
-pub fn run() -> Result<(), Report> {
+/// 
+/// Part 1. The Elf would first like to know which games would have been 
+/// possible if the bag contained only 12 red cubes, 13 green cubes, 
+/// and 14 blue cubes?
+/// 
+/// Part 2. What is the fewest number of cubes of each color that could 
+/// have been in the bag to make the game possible? The power of a set 
+/// of cubes is equal to the numbers of red, green, and blue cubes 
+/// multiplied together. What is the sum of the power of these sets?
+pub fn run (part: &Part) -> Result<usize, Report> {
 
     // part 1 hypothesis, max cube counts for a possible game
     let hypothesis: BTreeMap<&str, usize> = vec![ ("red", 12), ("green", 13), ("blue", 14)].into_iter().collect();
@@ -17,7 +27,7 @@ pub fn run() -> Result<(), Report> {
     // read in the input, remove delimiter chars other than space
     // parse into lines: "Game 1: 2 green, 6 blue, ..."   
     // parse into space delimited lists ["Game", "1", "2", "green", ...]
-    let document = std::fs::read_to_string("data/d2.txt")?;
+    let document = std::fs::read_to_string("data/day_2.txt")?;
     let ac = AhoCorasick::builder().build([":", ",", ";"]).unwrap();
     let content = ac.replace_all(&document, &["", "", ""]);   
     let lines = content.split("\n").collect_vec();
@@ -50,19 +60,41 @@ pub fn run() -> Result<(), Report> {
             })
             .collect_vec();
 
-        // check part 2 power (max counts multiple)
+        // check part 1, possible game hypothesis
+        if possible { possible_games += id }
+
+        // check part 2, power (max counts multiple)
         let mut power: usize = 1;
         max_counts.iter().for_each(|(_cube, count)| power = power * count);
         power_sum += power;
-
+    
         debug!("Game {id}; possible: {possible}, power: {power}, max: {max_counts:?}, {observations:?}");
-
-        if possible { possible_games += id }
 
     }
 
-    info!("Part 1: {possible_games}");
-    info!("Part 2: {power_sum}");
+    let answer = match *part {
+        Part::Part1 => possible_games,
+        Part::Part2 => power_sum,     
+    };
 
+    info!("Answer: {answer}");
+    Ok(answer)
+}
+
+#[test]
+fn part_1() -> Result<(), Report> {
+
+    let expected = 2076;
+    let observed = run(&Part::Part1)?;
+    assert_eq!(observed, expected);
+    Ok(())
+}
+
+#[test]
+fn part_2() -> Result<(), Report> {
+
+    let expected = 70950;
+    let observed = run(&Part::Part2)?;
+    assert_eq!(observed, expected);
     Ok(())
 }
