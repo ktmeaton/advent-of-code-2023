@@ -1,10 +1,10 @@
 pub mod day_1;
 pub mod day_2;
+pub mod template;
 use std::str::FromStr;
 
 use clap::ValueEnum;
 use color_eyre::eyre::{eyre, Report, Result};
-
 
 #[derive(Clone, Copy, Debug, PartialEq, ValueEnum)]
 pub enum Part {
@@ -19,7 +19,7 @@ impl FromStr for Part {
         let part = match part {
             "1" => Part::Part1,
             "2" => Part::Part2,
-            _   => return Err(eyre!("Unknown part {part:?}")),
+            _ => return Err(eyre!("Unknown part {part:?}")),
         };
 
         Ok(part)

@@ -1,7 +1,7 @@
 pub mod day;
 
-use clap::{Parser, ValueEnum};
 use crate::day::*;
+use clap::{Parser, ValueEnum};
 use color_eyre::eyre::{eyre, Report, Result};
 use log::info;
 use std::default::Default;
@@ -13,7 +13,6 @@ use std::str::FromStr;
 
 /// Run puzzle day and part.
 pub fn run(args: &Cli) -> Result<(), Report> {
-
     info!("Day {}", args.day);
 
     let part = <Part as FromStr>::from_str(&args.part)?;
@@ -43,7 +42,6 @@ pub fn run(args: &Cli) -> Result<(), Report> {
 #[clap(author, version)]
 #[clap(verbatim_doc_comment)]
 pub struct Cli {
-
     /// Output verbosity level.
     #[clap(short = 'v', long)]
     #[clap(value_enum, default_value_t = Verbosity::default())]
