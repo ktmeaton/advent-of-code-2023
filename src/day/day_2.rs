@@ -22,9 +22,7 @@ use std::collections::BTreeMap;
 pub fn run(part: &Part) -> Result<usize, Report> {
     // part 1 hypothesis, max cube counts for a possible game
     let hypothesis: BTreeMap<&str, usize> =
-        vec![("red", 12), ("green", 13), ("blue", 14)]
-            .into_iter()
-            .collect();
+        vec![("red", 12), ("green", 13), ("blue", 14)].into_iter().collect();
 
     // read in the input, remove delimiter chars other than space
     // parse into lines: "Game 1: 2 green, 6 blue, ..."
@@ -33,10 +31,8 @@ pub fn run(part: &Part) -> Result<usize, Report> {
     let ac = AhoCorasick::builder().build([":", ",", ";"]).unwrap();
     let content = ac.replace_all(&document, &["", "", ""]);
     let lines = content.split('\n').collect_vec();
-    let lines_split = lines
-        .iter()
-        .map(|line| line.split(' ').collect_vec())
-        .collect_vec();
+    let lines_split =
+        lines.iter().map(|line| line.split(' ').collect_vec()).collect_vec();
 
     let mut possible_games = 0;
     let mut power_sum = 0;

@@ -50,16 +50,8 @@ pub fn run(part: &Part) -> Result<usize, Report> {
         }
 
         // combine first and last numbers into digit
-        let first = search
-            .iter()
-            .min_by(|a, b| a.0.cmp(&b.0))
-            .map(|(_i, d)| d)
-            .unwrap();
-        let last = search
-            .iter()
-            .max_by(|a, b| a.0.cmp(&b.0))
-            .map(|(_i, d)| d)
-            .unwrap();
+        let first = search.iter().min_by(|a, b| a.0.cmp(&b.0)).map(|(_i, d)| d).unwrap();
+        let last = search.iter().max_by(|a, b| a.0.cmp(&b.0)).map(|(_i, d)| d).unwrap();
         let digit: usize = format!("{first}{last}").parse()?;
 
         total += digit;
