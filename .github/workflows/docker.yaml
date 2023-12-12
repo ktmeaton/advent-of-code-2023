@@ -107,7 +107,7 @@ jobs:
         uses: actions/upload-artifact@v3
         if: always()
         with:
-          name: advent-of-code-2023-docker
+          name: advent-of-code-2023_docker
           path: advent-of-code-2023.tar
           retention-days: 7
           if-no-files-found: error
