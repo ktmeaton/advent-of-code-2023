@@ -128,6 +128,7 @@ impl FromStr for Map {
 
     fn from_str(input: &str) -> Result<Self, Report> {
         let mut input = input.to_string();
+
         if input.ends_with('\n') || input.ends_with('\r') {
             input.pop();
         }

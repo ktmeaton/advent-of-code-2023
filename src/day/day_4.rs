@@ -5,8 +5,7 @@ use itertools::Itertools;
 use log::{debug, info};
 use std::str::FromStr;
 
-#[allow(dead_code)]
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct Card {
     id: usize,
     numbers: Vec<usize>,
@@ -24,6 +23,20 @@ impl Card {
             matches: Vec::new(),
             points: 0,
         }
+    }
+
+    pub fn expand_cards(&self, deck: &Vec<Card>) -> Result<Vec<usize>, Report> {
+        let mut ids = vec![self.id];
+        let num_copies = self.matches.len();
+        let ids_won = ((self.id + 1)..(self.id + 1 + num_copies)).collect_vec();
+
+        ids_won.iter().for_each(|id| {
+            let card = &deck[id - 1];
+            let ids_rec = card.expand_cards(deck).unwrap_or_default();
+            ids.extend(ids_rec);
+        });
+
+        Ok(ids)
     }
 }
 
@@ -56,22 +69,27 @@ impl FromStr for Card {
             points,
         };
 
-        debug!("card: {card:?}");
         Ok(card)
     }
 }
 
 /// Day 4
-pub fn run(_part: &Part) -> Result<usize, Report> {
+pub fn run(part: &Part) -> Result<usize, Report> {
     let mut input = std::fs::read_to_string("data/day_4.txt")?;
+
     if input.ends_with('\n') || input.ends_with('\r') {
         input.pop();
     }
 
-    let cards: Vec<_> =
+    let deck: Vec<_> =
         input.split('\n').map(|c| Card::from_str(c).unwrap_or_default()).collect();
 
-    let result = cards.iter().map(|c| c.points).sum();
+    let result = match *part {
+        Part::Part1 => deck.iter().map(|c| c.points).sum(),
+        Part::Part2 => {
+            deck.iter().filter_map(|c| c.expand_cards(&deck).ok()).flatten().count()
+        }
+    };
 
     info!("Answer: {result}");
     Ok(result)
@@ -86,7 +104,7 @@ fn part_1() -> Result<(), Report> {
 
 #[test]
 fn part_2() -> Result<(), Report> {
-    let expected = 1;
+    let expected = 23806951;
     let observed = run(&Part::Part2)?;
     assert_eq!(observed, expected);
     Ok(())
