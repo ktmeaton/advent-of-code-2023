@@ -1,4 +1,6 @@
 use crate::day::Part;
+use crate::utils;
+
 use aho_corasick::AhoCorasick;
 use color_eyre::eyre::{Report, Result};
 use itertools::Itertools;
@@ -27,7 +29,9 @@ pub fn run(part: &Part) -> Result<usize, Report> {
     // read in the input, remove delimiter chars other than space
     // parse into lines: "Game 1: 2 green, 6 blue, ..."
     // parse into space delimited lists ["Game", "1", "2", "green", ...]
-    let document = std::fs::read_to_string("data/day_2.txt")?;
+
+    let path = std::path::PathBuf::from("data/day_2.txt");
+    let document = utils::read_to_string(&path)?;
     let ac = AhoCorasick::builder().build([":", ",", ";"]).unwrap();
     let content = ac.replace_all(&document, &["", "", ""]);
     let lines = content.split('\n').collect_vec();
