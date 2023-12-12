@@ -25,6 +25,7 @@ pub fn run(args: &Cli) -> Result<(), Report> {
         "3" => day_3::run(&part)?,
         "4" => day_4::run(&part)?,
         "5" => day_5::run(&part)?,
+        "6" => day_6::run(&part)?,
         _ => return Err(eyre!("Day {} is not implemented yet.", args.day)),
     };
 
