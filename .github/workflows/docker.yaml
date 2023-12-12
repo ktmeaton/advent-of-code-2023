@@ -58,7 +58,7 @@ jobs:
       - name: download binary from build
         uses: actions/download-artifact@v3
         with:
-          name: advent-of-code-2023-${{ matrix.arch }}
+          name: advent-of-code-2023_${{ matrix.arch }}
           path: target/${{ matrix.arch }}/release/
 
       - name: update binary permission
