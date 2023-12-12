@@ -2,6 +2,7 @@ use crate::day::Part;
 use crate::utils;
 
 use color_eyre::eyre::{Report, Result};
+use core::ops::Range;
 use itertools::Itertools;
 use log::{debug, info};
 use std::cmp::{max, min};
@@ -26,7 +27,7 @@ pub fn run(part: &Part) -> Result<usize, Report> {
             sources.chunks(2).into_iter().map(|v| v[0]..v[0] + v[1]).collect_vec()
         }
     };
-
+       
     // iterate through each mapping of range(source) => range(destination)
     lines[1..].iter().for_each(|line| {
         let line_split = line.split(" map:\n").collect_vec();
@@ -34,42 +35,26 @@ pub fn run(part: &Part) -> Result<usize, Report> {
         debug!("{}", "-".repeat(80)); 
         debug!("connection: {:?}", line_split[0]);
 
-        sources.sort_by(|a, b| a.start.cmp(&b.start));        
+        sources.sort_by(|a, b| a.start.cmp(&b.start));
         debug!("\tsources: {sources:?}");
 
-        // parsing the mapping of source to new destination
-        let maps = line_split[1]
+        // map sources to new destinations
+        let (map_sources, map_destinations): (Vec<_>, Vec<_>) = line_split[1]
             .split('\n')
-            .map(|set| {
-                set.split(' ').filter_map(|c| c.parse::<usize>().ok()).collect_vec()
+            .map(|l| {
+                let m = l.split(' ').filter_map(|c| c.parse::<usize>().ok()).collect_vec();
+                ((m[1]..m[1]+m[2]), (m[0]..m[0]+m[2]))
             })
-            .collect_vec();
+            .unzip();
 
-        let map_sources = maps.iter().map(|l| (l[1]..l[1] + l[2])).collect_vec();
-        let map_destinations = maps.iter().map(|l| (l[0]..l[0] + l[2])).collect_vec();
         debug!("\tmap: {map_sources:?} => {map_destinations:?}");
 
-        // split up source ranges based on available source mapping
-        let mut sources_split = sources.clone().into_iter().flat_map(|s| {
-            let matches = map_sources.iter().filter(|r| r.contains(&s.start) || r.contains(&(s.end- 1))).collect_vec();
-            let overlaps = matches.iter().map(|m| max(s.start, m.start)..min(s.end, m.end)).collect_vec();
-            //debug!("\ts: {s:?}, overlaps: {overlaps:?}");
-            if overlaps.is_empty() || overlaps == vec![s.clone()] {
-                vec![s]
-            } else {
-                let mut uniq_start = overlaps.iter().filter_map(|o| (o.start > s.start).then_some(s.start..o.start)).collect_vec();
-                let mut uniq_end = overlaps.iter().filter_map(|o| (o.end < s.end).then_some(o.end..s.end)).collect_vec();
-                //debug!("\t\tuniq_start: {uniq_start:?}, uniq_end: {uniq_end:?}");
-                let mut ranges = overlaps;
-                ranges.append(&mut uniq_start);
-                ranges.append(&mut uniq_end);
-                ranges
-            }
-        })
-        .unique()
-        .collect_vec();
-        sources_split.sort_by(|a, b| a.start.cmp(&b.start));
-        debug!("\tsources_split: {sources_split:?}");       
+        // split up sources into ranges that overlap/don't overlap with map
+        let sources_split = sources
+            .iter()
+            .flat_map(|s| split_source(s, &map_sources).unwrap())
+            .collect_vec();
+        debug!("\tsources_split: {sources_split:?}");
 
         let destinations = sources_split
             .into_iter()
@@ -98,8 +83,71 @@ pub fn run(part: &Part) -> Result<usize, Report> {
 
     let result = destinations.into_iter().map(|r| r.start).min().unwrap();
 
+    //let result = 0;
     info!("Answer: {result}");
+
+    // // let s = 90..99;
+    // // let t = vec![56..93, 93..97];
+
+    // let s = 55..68;
+    // let t = vec![98..100, 50..98];
+
+    // let s = 82..83;
+    // let t = vec![15..52, 52..54, 0..15];
+    // let split = split_source(&s, &t)?;
+    // debug!("split: {split:?}");
+
     Ok(result)
+}
+
+pub fn split_source(
+    source: &Range<usize>,
+    target: &Vec<Range<usize>>,
+) -> Result<Vec<Range<usize>>, Report> {
+
+    let split = vec![source.clone()];
+    // check if source and target are exactly the same
+    if target.len() == 1 && *source == target[0] {
+        return Ok(split);
+    }
+    let s = source;
+    let mut target = target.clone();
+    target.sort_by(|a, b| a.start.cmp(&b.start));
+
+    //debug!("source: {source:?}, target: {target:?}");
+    // get overlaps between source and target
+    let overlaps = target
+        .iter()
+        .filter(|t| !(t.end < s.start || t.start > s.end))
+        .map(|t| max(s.start, t.start)..min(s.end, t.end))
+        .collect_vec();
+    //debug!("overlaps: {overlaps:?}");
+
+    if overlaps.is_empty() {
+        return Ok(split);
+    }
+
+    // add non_overlapping regions at beginning, in between and at end
+    let mut non_overlaps = Vec::new();
+    let mut end = s.start;
+    overlaps.iter().for_each(|o| {
+        if o.start > end {
+            non_overlaps.push(end..o.start);
+        }
+        end = o.end;
+    });
+    // add non_overlapping regions at end
+    let overlap_max = overlaps.iter().map(|r| r.end).max().unwrap_or(s.end);
+    if overlap_max < s.end {
+        non_overlaps.push(overlap_max..s.end);
+    }
+
+    // combine overlaps and non-overlaps
+    let mut split = overlaps;
+    split.append(&mut non_overlaps);
+    split.sort_by(|a, b| a.start.cmp(&b.start));
+
+    Ok(split)
 }
 
 #[test]
@@ -112,7 +160,7 @@ fn part_1() -> Result<(), Report> {
 
 #[test]
 fn part_2() -> Result<(), Report> {
-    let expected = 2;
+    let expected = 57451709;
     let observed = run(&Part::Part2)?;
     assert_eq!(observed, expected);
     Ok(())
