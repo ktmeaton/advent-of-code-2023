@@ -55,5 +55,5 @@ jobs:
       - name: download build output
         uses: actions/download-artifact@v3
         with:
-          name: advent-of-code-2023-${{ matrix.arch }}
+          name: advent-of-code-2023_${{ matrix.arch }}
           path: target/${{ matrix.arch }}/release
