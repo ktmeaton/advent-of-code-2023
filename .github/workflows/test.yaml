@@ -1,0 +1,59 @@
+name: Test
+
+on:
+  push:
+    branches:
+      - '*'
+  pull_request:
+    branches:
+      - '*'
+  release:
+    types: [published]
+
+
+env:
+  GITHUB_USERNAME: ${{ github.actor }}
+  GITHUB_TOKEN: ${{ github.token }}
+  DOCKER_IMAGE: "ghcr.io/${{ github.repository }}"
+
+jobs:
+
+  build:
+    uses: ./.github/workflows/build.yaml
+
+  # ---------------------------------------------------------------------------
+  test:
+
+    needs: build
+    if: ${{ always() }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # linux
+          - arch: x86_64-unknown-linux-musl
+            os: ubuntu-latest
+            binary: advent-of-code-2023
+          # windows
+          - arch: x86_64-pc-windows-gnu
+            os: windows-latest
+            binary: advent-of-code-2023.exe
+          # macOS
+          - arch: x86_64-apple-darwin
+            os: macos-latest
+            binary: advent-of-code-2023
+          # docker
+          - arch: docker
+            os: ubuntu-latest
+            binary: advent-of-code-2023
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+
+      - name: download build output
+        uses: actions/download-artifact@v3
+        with:
+          name: advent-of-code-2023-${{ matrix.arch }}
+          path: target/${{ matrix.arch }}/release
