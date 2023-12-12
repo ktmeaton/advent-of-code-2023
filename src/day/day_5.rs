@@ -3,7 +3,7 @@ use crate::utils;
 
 use color_eyre::eyre::{Report, Result};
 use itertools::Itertools;
-use log::{debug, info};
+use log::info;
 
 /// Day 5
 ///
@@ -21,8 +21,6 @@ pub fn run(part: &Part) -> Result<usize, Report> {
     // iterate through each mapping of source => destination
     lines[1..].iter().for_each(|line| {
         let line_split = line.split(" map:\n").collect_vec();
-        debug!("connection: {}", line_split[0]);
-        debug!("\tsources: {sources:?}");
 
         let lookup = line_split[1]
             .split('\n')
@@ -45,14 +43,12 @@ pub fn run(part: &Part) -> Result<usize, Report> {
                         let s_min = s.clone().min().unwrap();
                         let d_min = d.clone().min().unwrap();
                         let conversion = d_min as isize - s_min as isize;
-                        //debug!("source_range: {s:?}, dest_range: {d:?}, n: {n}, s_min: {s_min}, d_min: {d_min}, conversion: {conversion}");
                         ((*n as isize) + conversion) as usize
                     }
                     None => *n,
                 }
             })
             .collect_vec();
-        debug!("\tdestinations: {destinations:?}");
         sources = destinations;
     });
 
