@@ -4,98 +4,74 @@ use crate::utils;
 use color_eyre::eyre::{Report, Result};
 use core::ops::Range;
 use itertools::Itertools;
-use log::{debug, info};
+use log::info;
 use std::cmp::{max, min};
+use std::path::PathBuf;
 
 /// Day 5
 ///
-/// The Almanac contains mappings of seed => soil => fertilizer ... => location
-///
+/// Planting seeds with the help of the Almanac.
 pub fn run(part: &Part) -> Result<usize, Report> {
-    let path = std::path::PathBuf::from("data/day_5.txt");
+    // Read in puzzle input
+    let path = PathBuf::from("data/day_5.txt");
     let input = utils::read_to_string(&path)?;
-
-    // parse the seeds as the first source
     let lines = input.split("\n\n").filter(|l| !l.is_empty()).collect_vec();
-    let sources: Vec<usize> =
-        lines[0].split(' ').filter_map(|s| s.parse().ok()).collect();
 
-    // convert to ranges
+    // Parse seeds as the first source
+    let seeds = lines[0].split(' ').filter_map(|s| s.parse::<usize>().ok()).collect_vec();
+
+    // convert to ranges, varies based on Part 1 or Part 2
     let mut sources = match *part {
-        Part::Part1 => sources.into_iter().map(|n| n..n).collect_vec(),
-        Part::Part2 => {
-            sources.chunks(2).into_iter().map(|v| v[0]..v[0] + v[1]).collect_vec()
-        }
+        Part::Part1 => seeds.into_iter().map(|n| n..n).collect_vec(),
+        Part::Part2 => seeds.chunks(2).map(|v| v[0]..v[0] + v[1]).collect_vec(),
     };
-       
-    // iterate through each mapping of range(source) => range(destination)
-    lines[1..].iter().for_each(|line| {
+
+    // iterate through mappings of range(source) => range(destination)
+    let maps = lines[1..].iter();
+    maps.for_each(|line| {
+        // split line into connection (ex. seed-to-soil) and numbers
         let line_split = line.split(" map:\n").collect_vec();
 
-        debug!("{}", "-".repeat(80)); 
-        debug!("connection: {:?}", line_split[0]);
-
-        sources.sort_by(|a, b| a.start.cmp(&b.start));
-        debug!("\tsources: {sources:?}");
-
-        // map sources to new destinations
-        let (map_sources, map_destinations): (Vec<_>, Vec<_>) = line_split[1]
+        // parse mapping, into sources (s) and destinations (s)
+        let (map_s, map_d): (Vec<_>, Vec<_>) = line_split[1]
             .split('\n')
             .map(|l| {
-                let m = l.split(' ').filter_map(|c| c.parse::<usize>().ok()).collect_vec();
-                ((m[1]..m[1]+m[2]), (m[0]..m[0]+m[2]))
+                let m =
+                    l.split(' ').filter_map(|c| c.parse::<usize>().ok()).collect_vec();
+                ((m[1]..m[1] + m[2]), (m[0]..m[0] + m[2]))
             })
             .unzip();
 
-        debug!("\tmap: {map_sources:?} => {map_destinations:?}");
-
         // split up sources into ranges that overlap/don't overlap with map
-        let sources_split = sources
-            .iter()
-            .flat_map(|s| split_source(s, &map_sources).unwrap())
-            .collect_vec();
-        debug!("\tsources_split: {sources_split:?}");
+        let sources_split =
+            sources.iter().flat_map(|s| split_source(s, &map_s).unwrap()).collect_vec();
 
+        // get the new destinations for each source
         let destinations = sources_split
             .into_iter()
             .map(|s| {
-                debug!("\tsource: {s:?}");
-                let result = map_sources.iter().enumerate().find(|(_i, r)| r.contains(&s.start) && r.contains(&(s.end-1)));
+                let result = map_s
+                    .iter()
+                    .enumerate()
+                    .find(|(_i, r)| r.contains(&s.start) && r.contains(&(s.end - 1)));
 
                 if let Some((i, map_s)) = result {
-                    let map_d = &map_destinations[i];
+                    let map_d = &map_d[i];
                     let conversion = map_d.start as isize - map_s.start as isize;
-                    debug!("\t\tmap_s: {map_s:?} => map_d: {map_d:?}, conversion: {conversion:?}");    
                     let start = ((s.start as isize) + conversion) as usize;
                     let end = ((s.end as isize) + conversion) as usize;
                     start..end
-                }
-                else {
+                } else {
                     s
                 }
             })
             .collect_vec();
-        debug!("\tdestinations: {destinations:?}");
         sources = destinations;
     });
 
-    let destinations = sources;
+    let result = sources.into_iter().map(|r| r.start).min().unwrap();
 
-    let result = destinations.into_iter().map(|r| r.start).min().unwrap();
-
-    //let result = 0;
     info!("Answer: {result}");
-
-    // // let s = 90..99;
-    // // let t = vec![56..93, 93..97];
-
-    // let s = 55..68;
-    // let t = vec![98..100, 50..98];
-
-    // let s = 82..83;
-    // let t = vec![15..52, 52..54, 0..15];
-    // let split = split_source(&s, &t)?;
-    // debug!("split: {split:?}");
 
     Ok(result)
 }
@@ -104,7 +80,6 @@ pub fn split_source(
     source: &Range<usize>,
     target: &Vec<Range<usize>>,
 ) -> Result<Vec<Range<usize>>, Report> {
-
     let split = vec![source.clone()];
     // check if source and target are exactly the same
     if target.len() == 1 && *source == target[0] {
