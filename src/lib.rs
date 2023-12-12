@@ -1,5 +1,6 @@
 pub mod day;
 pub mod game;
+pub mod utils;
 
 use crate::day::*;
 use clap::{Parser, ValueEnum};
