@@ -1,4 +1,3 @@
-pub mod almanac;
 pub mod day;
 pub mod game;
 pub mod utils;
