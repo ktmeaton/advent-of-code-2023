@@ -22,7 +22,7 @@ jobs:
           # Linux
           - arch: x86_64-unknown-linux-musl
             os: ubuntu-latest
-            binary: advent-of-code-2023
+            binary: ${{ github.event.repository.name }}
     with:
       arch: ${{ matrix.arch }}
       os: ${{ matrix.os }}
@@ -37,7 +37,8 @@ jobs:
       matrix:
         arch: [x86_64-unknown-linux-musl]
         os: [ubuntu-latest]
-        binary: [advent-of-code-2023]
+        binary:
+          - ${{ github.event.repository.name }}
 
     runs-on: ${{ matrix.os }}
 
@@ -58,7 +59,7 @@ jobs:
       - name: download binary from build
         uses: actions/download-artifact@v3
         with:
-          name: advent-of-code-2023_${{ matrix.arch }}
+          name: ${{ github.event.repository.name }}_${{ matrix.arch }}
           path: target/${{ matrix.arch }}/release/
 
       - name: update binary permission
@@ -84,15 +85,15 @@ jobs:
           context: .
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          outputs: type=docker,dest=advent-of-code-2023.tar
+          outputs: type=docker,dest=${{ github.event.repository.name }}.tar
 
       - name: load
         run: |
-          docker load --input advent-of-code-2023.tar
+          docker load --input ${{ github.event.repository.name }}.tar
 
       - name: help
         run: |
-          docker run ${{ steps.meta.outputs.tags }} advent-of-code-2023 --help
+          docker run ${{ steps.meta.outputs.tags }} ${{ github.event.repository.name }} --help
 
       - name: build and push
         uses: docker/build-push-action@v5
@@ -107,7 +108,7 @@ jobs:
         uses: actions/upload-artifact@v3
         if: always()
         with:
-          name: advent-of-code-2023_docker
-          path: advent-of-code-2023.tar
+          name: ${{ github.event.repository.name }}_docker
+          path: ${{ github.event.repository.name }}.tar
           retention-days: 7
           if-no-files-found: error

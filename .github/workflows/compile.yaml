@@ -62,7 +62,7 @@ jobs:
       - name: upload binary
         uses: actions/upload-artifact@v3
         with:
-          name: advent-of-code-2023_${{ inputs.arch }}
+          name: ${{ github.event.repository.name }}_${{ inputs.arch }}
           path: target/${{ inputs.arch }}/release/${{ inputs.binary }}
           retention-days: 7
           if-no-files-found: error

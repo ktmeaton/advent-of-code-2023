@@ -34,19 +34,19 @@ jobs:
           # linux
           - arch: x86_64-unknown-linux-musl
             os: ubuntu-latest
-            binary: advent-of-code-2023
+            binary: ${{ github.event.repository.name }}
           # windows
           - arch: x86_64-pc-windows-gnu
             os: windows-latest
-            binary: advent-of-code-2023.exe
+            binary: ${{ github.event.repository.name }}.exe
           # macOS
           - arch: x86_64-apple-darwin
             os: macos-latest
-            binary: advent-of-code-2023
+            binary: ${{ github.event.repository.name }}
           # docker
           - arch: docker
             os: ubuntu-latest
-            binary: advent-of-code-2023
+            binary: ${{ github.event.repository.name }}
 
     runs-on: ${{ matrix.os }}
 
@@ -55,5 +55,42 @@ jobs:
       - name: download build output
         uses: actions/download-artifact@v3
         with:
-          name: advent-of-code-2023_${{ matrix.arch }}
+          name: ${{ github.event.repository.name }}_${{ matrix.arch }}
           path: target/${{ matrix.arch }}/release
+
+      # parse tag from load output, PR have unusual formats, also sometimes multiple tags
+      - name: load docker image
+        if:  matrix.arch == 'docker'
+        run: |
+          load=$(docker load --input target/${{ matrix.arch }}/release/rebar.tar | tee /dev/stderr)
+          echo -e $load
+          TAG=$(echo -e $load | sed 's/Loaded image: //g' | head -n 1 | cut -d ":" -f 2 | cut -d " " -f 1)
+          echo DOCKER_TAG="$TAG" >> $GITHUB_ENV
+
+      # ------------------------------------------------------------------------
+      # How we execute the program depends on the architecture
+
+      - name: set run command (windows)
+        if: matrix.os == 'windows-latest'
+        run: echo RUN_CMD=".\${{ matrix.binary }}" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: set run command (docker)
+        if: matrix.arch == 'docker'
+        run: echo RUN_CMD="docker run -v .:/rebar -e GITHUB_USERNAME=${{ github.actor }} -e GITHUB_TOKEN=${{ github.token }} "$DOCKER_IMAGE:$DOCKER_TAG" ${{ matrix.binary }}" >> $GITHUB_ENV
+
+      - name: set run command (linux, mac)
+        if: matrix.arch == 'x86_64-unknown-linux-musl' || matrix.arch == 'x86_64-apple-darwin'
+        run: echo RUN_CMD="./${{ matrix.binary }}" >> $GITHUB_ENV
+
+      - name: check run command
+        run: echo ${{ env.RUN_CMD }}
+
+      # ------------------------------------------------------------------------
+      # Install
+
+      - name: install
+        if: ${{ matrix.arch != 'docker' }}
+        run: |
+          chmod +x target/${{ matrix.arch }}/release/${{ matrix.binary }}
+          cp target/${{ matrix.arch }}/release/${{ matrix.binary }} .
+          ${{ env.RUN_CMD }} --help
