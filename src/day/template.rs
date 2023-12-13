@@ -1,9 +1,18 @@
 use crate::day::Part;
+// use crate::utils;
+// use itertools::Itertools;
+// use log::debug;
 use color_eyre::eyre::{Report, Result};
+use log::info;
 
 /// Day X
 pub fn run(part: &Part) -> Result<usize, Report> {
-    let result = if part == &Part::Part1 { 1 } else { 2 };
+    let result = match *part {
+        Part::Part1 => 1,
+        Part::Part2 => 2,
+    };
+
+    info!("Answer: {result}");
     Ok(result)
 }
 
