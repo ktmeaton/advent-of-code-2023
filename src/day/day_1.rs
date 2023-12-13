@@ -28,8 +28,7 @@ pub fn run(part: &Part) -> Result<usize, Report> {
     ];
 
     // read in the input (calibration document)
-    let path = std::path::PathBuf::from("data/day_1.txt");
-    let content = utils::read_to_string(&path)?;
+    let content = utils::read_to_string("data/day_1.txt")?;
     let lines = content.split('\n').collect_vec();
 
     let mut total = 0;

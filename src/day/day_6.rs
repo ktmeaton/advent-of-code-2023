@@ -4,13 +4,11 @@ use color_eyre::eyre::{Report, Result};
 use itertools::Itertools;
 use log::debug;
 use log::info;
-use std::path::PathBuf;
 
 /// Day 6 - Boat Races
 pub fn run(part: &Part) -> Result<usize, Report> {
     // parse puzzle input into times and distances
-    let path = PathBuf::from("data/day_6.txt");
-    let input = utils::read_to_string(&path)?;
+    let input = utils::read_to_string("data/day_6.txt")?;
     let lines = input.split('\n').collect_vec();
 
     let mut times: Vec<usize> = lines[0].split(' ').filter_map(|c| c.parse().ok()).collect();

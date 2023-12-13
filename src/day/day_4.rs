@@ -8,8 +8,7 @@ use std::str::FromStr;
 
 /// Day 4
 pub fn run(part: &Part) -> Result<usize, Report> {
-    let path = std::path::PathBuf::from("data/day_4.txt");
-    let input = utils::read_to_string(&path)?;
+    let input = utils::read_to_string("data/day_4.txt")?;
     let deck = input.split('\n').filter_map(|c| Card::from_str(c).ok()).collect_vec();
 
     let result = match *part {

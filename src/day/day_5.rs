@@ -6,15 +6,13 @@ use core::ops::Range;
 use itertools::Itertools;
 use log::info;
 use std::cmp::{max, min};
-use std::path::PathBuf;
 
 /// Day 5
 ///
 /// Planting seeds with the help of the Almanac.
 pub fn run(part: &Part) -> Result<usize, Report> {
     // Read in puzzle input
-    let path = PathBuf::from("data/day_5.txt");
-    let input = utils::read_to_string(&path)?;
+    let input = utils::read_to_string("data/day_5.txt")?;
     let lines = input.split("\n\n").filter(|l| !l.is_empty()).collect_vec();
 
     // Parse seeds as the first source
