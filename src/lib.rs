@@ -1,5 +1,6 @@
 pub mod day;
 pub mod game;
+pub mod poker;
 pub mod utils;
 
 use crate::day::*;
