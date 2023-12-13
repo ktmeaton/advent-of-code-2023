@@ -14,9 +14,7 @@ pub fn run(part: &Part) -> Result<usize, Report> {
 
     let result = match *part {
         Part::Part1 => deck.iter().map(|c| c.points()).sum(),
-        Part::Part2 => {
-            deck.iter().filter_map(|c| c.expand_cards(&deck).ok()).flatten().count()
-        }
+        Part::Part2 => deck.iter().filter_map(|c| c.expand_cards(&deck).ok()).flatten().count(),
     };
 
     info!("Answer: {result}");
@@ -89,8 +87,7 @@ impl FromStr for Card {
         let id = pieces[1].replace(':', "").parse()?;
         let split = pieces.iter().position(|p| *p == "|").unwrap();
 
-        let numbers =
-            pieces[2..split].iter().copied().map(|p| p.parse().unwrap()).collect_vec();
+        let numbers = pieces[2..split].iter().copied().map(|p| p.parse().unwrap()).collect_vec();
         let target_numbers =
             pieces[split + 1..].iter().copied().map(|p| p.parse().unwrap()).collect_vec();
         let winning_numbers =

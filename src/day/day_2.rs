@@ -35,8 +35,7 @@ pub fn run(part: &Part) -> Result<usize, Report> {
     let ac = AhoCorasick::builder().build([":", ",", ";"]).unwrap();
     let content = ac.replace_all(&document, &["", "", ""]);
     let lines = content.split('\n').collect_vec();
-    let lines_split =
-        lines.iter().map(|line| line.split(' ').collect_vec()).collect_vec();
+    let lines_split = lines.iter().map(|line| line.split(' ').collect_vec()).collect_vec();
 
     let mut possible_games = 0;
     let mut power_sum = 0;

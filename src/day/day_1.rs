@@ -46,8 +46,7 @@ pub fn run(part: &Part) -> Result<usize, Report> {
         // in part two, we also search by name ("one" => "1")
         if *part == Part::Part2 {
             for (n, d) in &digits {
-                let mut name_search =
-                    line.match_indices(n).map(|(i, _n)| (i, *d)).collect_vec();
+                let mut name_search = line.match_indices(n).map(|(i, _n)| (i, *d)).collect_vec();
                 search.append(&mut name_search);
             }
         }

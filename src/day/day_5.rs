@@ -36,8 +36,7 @@ pub fn run(part: &Part) -> Result<usize, Report> {
         let (map_s, map_d): (Vec<_>, Vec<_>) = line_split[1]
             .split('\n')
             .map(|l| {
-                let m =
-                    l.split(' ').filter_map(|c| c.parse::<usize>().ok()).collect_vec();
+                let m = l.split(' ').filter_map(|c| c.parse::<usize>().ok()).collect_vec();
                 ((m[1]..m[1] + m[2]), (m[0]..m[0] + m[2]))
             })
             .unzip();

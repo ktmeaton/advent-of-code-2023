@@ -31,11 +31,7 @@ impl Map {
 
     /// Check if a map coordinate is a character. If so return the full
     /// number and the coordinate range it spans.
-    pub fn get_character(
-        &self,
-        x: usize,
-        y: usize,
-    ) -> Option<(usize, Vec<(usize, usize)>)> {
+    pub fn get_character(&self, x: usize, y: usize) -> Option<(usize, Vec<(usize, usize)>)> {
         // check if the coordinate is a digit
         if !self.tiles[y][x].is_ascii_digit() {
             return None;
@@ -81,9 +77,7 @@ impl Map {
                     .filter_map(|(x, c)| {
                         let coords = vec![(x, y)];
                         match *tile {
-                            Tile::Character => {
-                                self.get_character(x, y).map(|(_, coords)| coords)
-                            }
+                            Tile::Character => self.get_character(x, y).map(|(_, coords)| coords),
                             Tile::Enemy => (!c.is_ascii_digit()
                                 && c.to_string() != Tile::Base.to_string())
                             .then_some(coords),

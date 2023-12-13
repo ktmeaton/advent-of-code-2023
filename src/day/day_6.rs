@@ -13,10 +13,8 @@ pub fn run(part: &Part) -> Result<usize, Report> {
     let input = utils::read_to_string(&path)?;
     let lines = input.split('\n').collect_vec();
 
-    let mut times: Vec<usize> =
-        lines[0].split(' ').filter_map(|c| c.parse().ok()).collect();
-    let mut dists: Vec<usize> =
-        lines[1].split(' ').filter_map(|c| c.parse().ok()).collect();
+    let mut times: Vec<usize> = lines[0].split(' ').filter_map(|c| c.parse().ok()).collect();
+    let mut dists: Vec<usize> = lines[1].split(' ').filter_map(|c| c.parse().ok()).collect();
 
     if *part == Part::Part2 {
         let t = times.iter().map(|n| n.to_string()).join("");
