@@ -4,7 +4,7 @@ use crate::utils;
 use color_eyre::eyre::{eyre, Report, Result};
 use core::cmp::Ordering;
 use itertools::Itertools;
-//use log::debug;
+use log::debug;
 use log::info;
 
 #[derive(Debug, Eq, PartialEq)]
@@ -16,7 +16,7 @@ pub struct Hand {
 }
 
 impl Hand {
-    pub fn from_cards(cards: &[char], bid: usize) -> Result<Self, Report> {
+    pub fn from_cards(cards: &[char], bid: usize, part: &Part) -> Result<Self, Report> {
         let cards_rank = cards
             .iter()
             .map(|c| {
@@ -26,7 +26,10 @@ impl Hand {
                     // face card points
                     None => match c {
                         'T' => 10,
-                        'J' => 11,
+                        'J' => match *part {
+                            Part::Part1 => 11,
+                            Part::Part2 => 1,
+                        },
                         'Q' => 12,
                         'K' => 13,
                         'A' => 14,
@@ -38,7 +41,7 @@ impl Hand {
             .collect::<Result<Vec<_>, Report>>()?;
 
         let hand = Hand {
-            hand_type: HandType::from_cards(cards)?,
+            hand_type: HandType::from_cards(cards, part)?,
             cards: cards.to_vec(),
             cards_rank,
             bid,
@@ -63,7 +66,7 @@ impl Ord for Hand {
     }
 }
 
-#[derive(Debug, Ord, Eq, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub enum HandType {
     FiveOfAKind,
     FourOfAKind,
@@ -75,13 +78,21 @@ pub enum HandType {
 }
 
 impl HandType {
-    pub fn from_cards(cards: &[char]) -> Result<Self, Report> {
+    pub fn from_cards(cards: &[char], part: &Part) -> Result<Self, Report> {
+        let cards_unique = cards.iter().unique().cloned().collect_vec();
+
+        // // in part 2, remove jokers to calculate hand type initially
+        // let count_cards = match *part {
+        //     Part::Part1 => cards.to_vec(),
+        //     Part::Part2 => cards.into_iter().filter(|c| **c != 'J').cloned().collect_vec(),
+        // };
+
         let mut counts =
-            cards.iter().unique().map(|u| cards.iter().filter(|c| *c == u).count()).collect_vec();
+            cards_unique.iter().map(|u| cards.iter().filter(|c| *c == u).count()).collect_vec();
         counts.sort();
         counts.reverse();
 
-        let t = match *counts {
+        let mut hand_type = match *counts {
             [5] => HandType::FiveOfAKind,
             [4, 1] => HandType::FourOfAKind,
             [3, 2] => HandType::FullHouse,
@@ -92,19 +103,36 @@ impl HandType {
             _ => return Err(eyre!("Unknown hand type: {cards:?}")),
         };
 
-        Ok(t)
+        // handle "J" as jokers in Part 2
+        if *part == Part::Part2 && cards.contains(&'J') {
+            let num_jokers = cards.iter().filter(|c| **c == 'J').count();
+
+            hand_type = match hand_type {
+                HandType::FiveOfAKind | HandType::FourOfAKind => HandType::FiveOfAKind,
+                HandType::FullHouse => match num_jokers {
+                    3 | 2 => HandType::FiveOfAKind,
+                    _ => HandType::FourOfAKind,
+                },
+                HandType::ThreeOfAKind => match num_jokers {
+                    3 => HandType::FourOfAKind,
+                    2 => HandType::FiveOfAKind,
+                    _ => HandType::FourOfAKind,
+                },
+                HandType::TwoPair => match num_jokers {
+                    2 => HandType::FourOfAKind,
+                    _ => HandType::FullHouse,
+                },
+                HandType::OnePair => HandType::ThreeOfAKind,
+                HandType::HighCard => HandType::OnePair,
+            };
+
+            debug!("JOKER!: {cards:?}, {hand_type:?}, {num_jokers:?}");
+        }
+        Ok(hand_type)
     }
 }
 
 /// Day 7 - Camel Cards
-/// A modified version of poker. We need to:
-/// 1. Order a 'Hand' based on the Type (ex. Full House)
-///     - Order types: Five of a Kind > Four of a Kind
-///     - Split String into chars: "T55J5" => ['T', '5', '5', 'J', '5']
-///     - Count char occurences: [('T', 1), ('5' : 3), ('J': 1)]
-///     - Sort the counts and match Type patterns:
-///         [3, 1, 1] => Three Of A Kind, [3, 2] => Full House
-/// 2. Order a 'Hand' based on the Power (reading left to )
 pub fn run(part: &Part) -> Result<usize, Report> {
     // read in puzzle input
     let input = utils::read_to_string("data/day_7.txt")?;
@@ -116,19 +144,16 @@ pub fn run(part: &Part) -> Result<usize, Report> {
         .map(|(hand, bid)| {
             let cards = hand.chars().collect_vec();
             let bid = bid.parse::<usize>().unwrap();
-            let hand = Hand::from_cards(&cards, bid)?;
+            let hand = Hand::from_cards(&cards, bid, part)?;
             Ok(hand)
         })
         .collect::<Result<Vec<_>, Report>>()?;
 
-    // Part 1: rank hands
+    // rank hands, strongest to weakest
     hands.sort();
 
-    let result = match *part {
-        Part::Part1 => hands.iter().enumerate().map(|(i, h)| h.bid * (hands.len() - i)).sum(),
-        Part::Part2 => 2,
-    };
-
+    // result is the produce of rank and the bid
+    let result = hands.iter().enumerate().map(|(i, h)| h.bid * (hands.len() - i)).sum();
     info!("Answer: {result}");
     Ok(result)
 }
@@ -143,7 +168,7 @@ fn part_1() -> Result<(), Report> {
 
 #[test]
 fn part_2() -> Result<(), Report> {
-    let expected = 2;
+    let expected = 250382098;
     let observed = run(&Part::Part2)?;
     assert_eq!(observed, expected);
     Ok(())
