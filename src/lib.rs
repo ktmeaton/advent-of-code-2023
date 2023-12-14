@@ -50,6 +50,7 @@ pub fn run(args: &Cli) -> Result<(), Report> {
 #[clap(name = "advent-of-code-2023", trailing_var_arg = true)]
 #[clap(author, version)]
 #[clap(verbatim_doc_comment)]
+#[clap(arg_required_else_help = true)]
 pub struct Cli {
     /// Output verbosity level.
     #[clap(short = 'v', long)]
