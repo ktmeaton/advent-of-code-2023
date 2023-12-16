@@ -9,7 +9,8 @@ use log::info;
 use prime_factorization::Factorization;
 use std::collections::BTreeMap;
 
-/// Day X
+/// Day 8 - Ghost Map
+#[allow(clippy::explicit_counter_loop)]
 pub fn run(part: &Part) -> Result<usize, Report> {
     // read in puzzle input, standardized for easy splitting
     let input = utils::read_to_string("data/day_8.txt")?;
@@ -59,8 +60,10 @@ pub fn run(part: &Part) -> Result<usize, Report> {
 
     // find the steps from each current to dest, we will find destination by LCM
     let mut steps: BTreeMap<_, _> = current.iter().enumerate().map(|(i, _c)| (i, 0)).collect();
+    let mut counter = 0;
 
-    for (counter, d) in directions.into_iter().enumerate().cycle() {
+    for d in directions.into_iter().cycle() {
+        counter += 1;
         current = current
             .iter()
             .enumerate()
