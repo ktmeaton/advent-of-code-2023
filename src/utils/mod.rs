@@ -1,3 +1,5 @@
+pub mod table;
+
 use color_eyre::eyre::{Report, Result};
 use std::path::PathBuf;
 
