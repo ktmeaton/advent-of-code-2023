@@ -2,6 +2,7 @@ use color_eyre::eyre::{Report, Result};
 use itertools::Itertools;
 use std::str::FromStr;
 
+#[derive(Clone)]
 pub struct Map {
     pub tiles: Vec<Vec<char>>,
 }
@@ -19,14 +20,6 @@ impl Map {
 
     pub fn rows(&self) -> usize {
         self.tiles.len()
-    }
-
-    pub fn columns(&self) -> usize {
-        if self.tiles.is_empty() {
-            0
-        } else {
-            self.tiles[0].len()
-        }
     }
 
     /// Check if a map coordinate is a character. If so return the full
@@ -50,7 +43,7 @@ impl Map {
         // read left to right from start
         let mut digits = Vec::new();
 
-        for x_i in start..self.columns() {
+        for x_i in start..self.tiles[y].len() {
             let c = self.tiles[y][x_i];
             match c.is_ascii_digit() {
                 true => digits.push(c),
@@ -101,7 +94,7 @@ impl Map {
             .flat_map(|x| (y - 1..=y + 1).map(|y| (x, y)).collect_vec())
             .filter(|(x_i, y_i)| (*x_i != x || *y_i != y) && (*x_i >= 0 && *y_i >= 0))
             .map(|(x, y)| (x as usize, y as usize))
-            .filter(|(x, y)| *x < self.columns() && *y < self.rows())
+            .filter(|(x, y)| *x < self.tiles[*y].len() && *y < self.tiles.len())
             .collect_vec()
     }
 
@@ -129,7 +122,7 @@ impl Map {
         n.into_iter()
             // filter to valid coordinates
             .filter_map(|(x, y)| (x >= 0 && y >= 0).then_some((x as usize, y as usize)))
-            .filter(|(x, y)| *x < self.tiles[0].len() && *y < self.tiles.len())
+            .filter(|(x, y)| *x < self.tiles[*y].len() && *y < self.tiles.len())
             .collect_vec()
     }
 }
