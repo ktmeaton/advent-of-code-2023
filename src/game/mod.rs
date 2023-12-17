@@ -3,7 +3,7 @@ use itertools::Itertools;
 use std::str::FromStr;
 
 pub struct Map {
-    tiles: Vec<Vec<char>>,
+    pub tiles: Vec<Vec<char>>,
 }
 
 impl Default for Map {
@@ -104,17 +104,34 @@ impl Map {
             .filter(|(x, y)| *x < self.columns() && *y < self.rows())
             .collect_vec()
     }
-}
 
-// ----------------------------------------------------------------------------
-// Tiles
+    // Get neighbors based on a pipe
+    pub fn get_pipe_neighbors(&self, x: usize, y: usize) -> Vec<(usize, usize)> {
+        let c = self.tiles[y][x];
+        let (x, y) = (x as i32, y as i32);
 
-#[derive(PartialEq, Eq)]
-pub enum Tile {
-    Character,
-    Trap,
-    Enemy,
-    Base,
+        let n: Vec<(i32, i32)> = match c {
+            'S' => self
+                .get_neighbors(x as usize, y as usize)
+                .into_iter()
+                .map(|c| (c.0 as i32, c.1 as i32))
+                .collect_vec(),
+            '|' => vec![(x, y - 1), (x, y + 1)],
+            '-' => vec![(x - 1, y), (x + 1, y)],
+            'L' => vec![(x, y - 1), (x + 1, y)],
+            'J' => vec![(x - 1, y), (x, y - 1)],
+            '7' => vec![(x - 1, y), (x, y + 1)],
+            'F' => vec![(x, y + 1), (x + 1, y)],
+            _ => vec![],
+        };
+
+        // filter to valid coord
+        n.into_iter()
+            // filter to valid coordinates
+            .filter_map(|(x, y)| (x >= 0 && y >= 0).then_some((x as usize, y as usize)))
+            .filter(|(x, y)| *x < self.tiles[0].len() && *y < self.tiles.len())
+            .collect_vec()
+    }
 }
 
 impl FromStr for Map {
@@ -130,6 +147,17 @@ impl FromStr for Map {
         let map = Map { tiles };
         Ok(map)
     }
+}
+
+// ----------------------------------------------------------------------------
+// Tiles
+
+#[derive(PartialEq, Eq)]
+pub enum Tile {
+    Character,
+    Trap,
+    Enemy,
+    Base,
 }
 
 impl std::fmt::Display for Tile {
