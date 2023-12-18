@@ -125,6 +125,60 @@ impl Map {
             .filter(|(x, y)| *x < self.tiles[*y].len() && *y < self.tiles.len())
             .collect_vec()
     }
+
+    /// push apart each pipe row
+    pub fn push_pipe_rows(&self) -> Map {
+        let tiles = self
+            .tiles
+            .iter()
+            .enumerate()
+            .flat_map(|(y, row)| match y == self.tiles.len() - 1 {
+                true => vec![row.clone()],
+                false => {
+                    let new_row = (0..row.len())
+                        .map(|x| {
+                            let n1 = self.get_pipe_neighbors(x, y);
+                            let n2 = self.get_pipe_neighbors(x, y + 1);
+                            match n1.contains(&(x, y + 1)) && n2.contains(&(x, y)) {
+                                true => '|',
+                                false => '*',
+                            }
+                        })
+                        .collect_vec();
+                    vec![row.clone(), new_row]
+                }
+            })
+            .collect_vec();
+
+        Map { tiles }
+    }
+
+    /// push apart each pipe column
+    pub fn push_pipe_columns(&self) -> Map {
+        let tiles = (0..self.tiles.len())
+            .map(|y| {
+                (0..self.tiles[y].len())
+                    .flat_map(|x| {
+                        let c = self.tiles[y][x];
+                        match x == self.tiles[y].len() - 1 {
+                            true => vec![c],
+                            false => {
+                                let n1 = self.get_pipe_neighbors(x, y);
+                                let n2 = self.get_pipe_neighbors(x + 1, y);
+                                let n = match n1.contains(&(x + 1, y)) && n2.contains(&(x, y)) {
+                                    true => '-',
+                                    false => '*',
+                                };
+                                vec![c, n]
+                            }
+                        }
+                    })
+                    .collect_vec()
+            })
+            .collect();
+
+        Map { tiles }
+    }
 }
 
 impl FromStr for Map {
