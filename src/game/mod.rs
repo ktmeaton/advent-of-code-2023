@@ -1,3 +1,5 @@
+use crate::utils::table::Table;
+
 use color_eyre::eyre::{Report, Result};
 use itertools::Itertools;
 use std::str::FromStr;
@@ -104,7 +106,7 @@ impl Map {
         let (x, y) = (x as i32, y as i32);
 
         let n: Vec<(i32, i32)> = match c {
-            'S' => self
+            'S' | '*' => self
                 .get_neighbors(x as usize, y as usize)
                 .into_iter()
                 .map(|c| (c.0 as i32, c.1 as i32))
@@ -122,7 +124,8 @@ impl Map {
         n.into_iter()
             // filter to valid coordinates
             .filter_map(|(x, y)| (x >= 0 && y >= 0).then_some((x as usize, y as usize)))
-            .filter(|(x, y)| *x < self.tiles[*y].len() && *y < self.tiles.len())
+            .filter(|(_x, y)| *y < self.tiles.len())
+            .filter(|(x, y)| *x < self.tiles[*y].len())
             .collect_vec()
     }
 
@@ -178,6 +181,27 @@ impl Map {
             .collect();
 
         Map { tiles }
+    }
+
+    pub fn pretty_print(&self) -> Result<String, Report> {
+        let mut table = Table::new();
+        table.headers = (0..self.tiles[0].len()).map(|n| n.to_string()).collect_vec();
+        table.headers.insert(0, "y/x".to_string());
+        table.rows = self
+            .tiles
+            .iter()
+            .enumerate()
+            .map(|(y, row)| {
+                let mut row = row.iter().map(|c| c.to_string()).collect_vec();
+                row.insert(0, y.to_string());
+                row
+            })
+            .collect_vec();
+        let mut md = table.to_markdown()?;
+        md = md.replace("| |", "| X");
+        md = md.replace('|', "");
+        md = md.replace('X', "|");
+        Ok(md)
     }
 }
 

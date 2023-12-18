@@ -28,12 +28,13 @@ pub fn run(part: &Part) -> Result<usize, Report> {
     let input = utils::read_to_string("data/day_10_part_2_test.txt")?;
     let mut pipe_map = Map::from_str(&input)?;
 
-    // part 2, add spaces
+    // part 2, push apart each row and column to spaces between pipes
     if *part == Part::Part2 {
         pipe_map = pipe_map.push_pipe_rows();
         pipe_map = pipe_map.push_pipe_columns();
-
-        pipe_map.tiles.iter().for_each(|row| debug!("{}", row.iter().join("")));
+        // debug
+        debug!("\n{}", pipe_map.pretty_print()?);
+        //pipe_map.tiles.iter().for_each(|row| debug!("{}", row.iter().join("")));
     }
 
     // find start location
@@ -42,9 +43,9 @@ pub fn run(part: &Part) -> Result<usize, Report> {
     let c = pipe_map.tiles[y][x];
 
     // keep track of pipe connections we've seen
-    let mut travel_history = HashMap::new();
+    let mut pipe_history = HashMap::new();
     let curr = (x, y, c);
-    travel_history.insert(curr, curr);
+    pipe_history.insert(curr, curr);
 
     // keep track of where we are currently (will be multple tiles)
     let mut current = vec![curr];
@@ -57,7 +58,7 @@ pub fn run(part: &Part) -> Result<usize, Report> {
         current = current
             .into_iter()
             .flat_map(|curr| {
-                let prev = travel_history.get(&curr).unwrap();
+                let prev = pipe_history.get(&curr).unwrap();
                 //debug!("\tcurrent: {curr:?}, previous: {prev:?}");
 
                 // get next node connections
@@ -79,9 +80,9 @@ pub fn run(part: &Part) -> Result<usize, Report> {
                     if loop_found {
                         break;
                     }
-                    match travel_history.contains_key(&n) {
+                    match pipe_history.contains_key(&n) {
                         true => loop_found = true,
-                        false => _ = travel_history.insert(n, curr),
+                        false => _ = pipe_history.insert(n, curr),
                     };
                     //debug!("\t\tnext: {n:?}, loop_found: {loop_found}");
                 }
@@ -94,10 +95,31 @@ pub fn run(part: &Part) -> Result<usize, Report> {
         }
     }
 
-    debug!("counter: {counter}");
+    // in part 2, find all tiles inside loop,
+    // all tiles that are not in pipe history are candidates
+    // if we can walk from a coordinate to an edge, it is outside
+    if *part == Part::Part2 {
+        let candidates = (0..pipe_map.tiles.len())
+            .filter(|y| *y > 1 && *y < pipe_map.tiles.len() - 2)
+            .flat_map(|y| {
+                (0..pipe_map.tiles[y].len())
+                    .filter(|x| *x > 1 && *x < pipe_map.tiles[y].len() - 2)
+                    .filter_map(|x| {
+                        let c = pipe_map.tiles[y][x];
+                        match c != '*' && !pipe_history.contains_key(&(x, y, c)) {
+                            true => Some((x, y, c)),
+                            false => None,
+                        }
+                    })
+                    .collect_vec()
+            })
+            .collect_vec();
+
+        candidates.into_iter().for_each(|c| debug!("candidate: {c:?}"));
+    }
 
     let result = match *part {
-        Part::Part1 => 1,
+        Part::Part1 => counter,
         Part::Part2 => 2,
     };
 
