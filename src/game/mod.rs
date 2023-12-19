@@ -106,12 +106,7 @@ impl Map {
         let (x, y) = (x as i32, y as i32);
 
         let n: Vec<(i32, i32)> = match c {
-            'S' => self
-                .get_neighbors(x as usize, y as usize)
-                .into_iter()
-                .map(|c| (c.0 as i32, c.1 as i32))
-                .collect_vec(),
-            '+' => vec![(x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)],
+            'S' | '+' => vec![(x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)],
             '|' => vec![(x, y - 1), (x, y + 1)],
             '-' => vec![(x - 1, y), (x + 1, y)],
             'L' => vec![(x, y - 1), (x + 1, y)],
@@ -130,52 +125,45 @@ impl Map {
             .collect_vec()
     }
 
-    /// flood fill algorithm
-    pub fn flood_fill(&self, x: usize, y: usize) -> Vec<(usize, usize, char)> {
-        // keep track of pipe connections we've seen
-        let c = self.tiles[y][x];
-        let curr = (x, y, c);
-        let mut filled = vec![curr];
-
-        // keep track of where we are currently (will be multple tiles)
-        let mut current = vec![curr];
-        let mut stop = false;
-
-        while !stop {
-            //println!("all: {current:?}");
-            current = current
-                .into_iter()
-                .flat_map(|curr| {
-                    //println!("\tcurrent: {curr:?}");
-                    // get next node connections
-                    let next_nodes = self
-                        .get_pipe_neighbors(curr.0, curr.1)
-                        .into_iter()
-                        .map(|(x, y)| (x, y, self.tiles[y][x]))
-                        // don't backtrack to any node we've already filled
-                        .filter(|(x, y, c)| !filled.contains(&(*x, *y, *c)) && *c != 'S')
-                        // keep valid connections back to current
-                        .filter(|(x, y, _c)| {
-                            let n = self.get_pipe_neighbors(*x, *y);
-                            n.contains(&(curr.0, curr.1))
-                        })
-                        .collect_vec();
-                    //println!("\t\tnext_nodes: {next_nodes:?}");
-
-                    next_nodes.iter().for_each(|n| {
-                        filled.push(*n);
-                    });
-                    next_nodes
-                })
-                .collect_vec();
-
-            // if we've run out of nodes to search
-            if current.is_empty() {
-                stop = true
+    // check if coordiantes are in the tile map boundary
+    pub fn is_tile(&self, x: isize, y: isize) -> bool {
+        match x >= 0 && y >= 0 {
+            true => {
+                let (x, y) = (x as usize, y as usize);
+                x < self.tiles[y].len() && y < self.tiles.len()
             }
+            false => false,
+        }
+    }
+
+    /// flood fill algorithm
+    pub fn flood_fill(
+        &self,
+        x: usize,
+        y: usize,
+        mut f: Vec<(usize, usize)>,
+    ) -> Vec<(usize, usize)> {
+        f.push((x, y));
+
+        let next_nodes = self
+            .get_pipe_neighbors(x, y)
+            .into_iter()
+            // don't backtrack
+            .filter(|(xn, yn)| !f.contains(&(*xn, *yn)))
+            // don't enter start node
+            .filter(|(xn, yn)| self.tiles[*yn][*xn] != 'S')
+            // make sure pipe goes both ways
+            .filter(|(xn, yn)| self.get_pipe_neighbors(*xn, *yn).contains(&(x, y)))
+            .collect_vec();
+
+        for (x, y) in next_nodes {
+            if f.contains(&(x, y)) {
+                continue;
+            }
+            f = self.flood_fill(x, y, f.clone());
         }
 
-        filled
+        f
     }
 
     pub fn zoom_in(&mut self) {
