@@ -24,7 +24,7 @@ use std::str::FromStr;
 /// "Squeezing between pipes", could we look for all loop pipes that are
 /// adjacaent and push them apart?
 pub fn run(part: &Part) -> Result<usize, Report> {
-    let input = utils::read_to_string("data/day_10_part_2_test.txt")?;
+    let input = utils::read_to_string("data/day_10.txt")?;
     let mut pipe_map = Map::from_str(&input)?;
 
     // part 2, push apart each row and column to spaces between pipes
@@ -37,18 +37,20 @@ pub fn run(part: &Part) -> Result<usize, Report> {
     let y = pipe_map.tiles.iter().position(|row| row.contains(&'S')).unwrap();
     let x = pipe_map.tiles[y].iter().position(|x| *x == 'S').unwrap();
 
-    debug!("\n{}", pipe_map.pretty_print()?);
+    // fill the loop from start
     let pipe_loop = pipe_map.flood_fill(x, y);
 
     // in part 2, find all tiles inside loop
+    let (mut insiders, mut outsiders) = (Vec::new(), Vec::new());
     if *part == Part::Part2 {
-
-        // identify non-loop coords as candidates
         let candidates = (0..pipe_map.tiles.len())
-            .filter(|y| *y > 1 && *y < pipe_map.tiles.len() - 2)
+            // exclude odd number rows and columns (zoom)
+            .filter(|y| y % 2 == 0)
+            //.filter(|y| *y > 0 && *y < pipe_map.tiles.len() - 1)
             .flat_map(|y| {
                 (0..pipe_map.tiles[y].len())
-                    .filter(|x| *x > 1 && *x < pipe_map.tiles[y].len() - 2)
+                    //.filter(|x| *x > 0 && *x < pipe_map.tiles[y].len() - 1)
+                    .filter(|x| x % 2 == 0)
                     .filter_map(|x| {
                         let c = pipe_map.tiles[y][x];
                         match c != '*' && !pipe_loop.contains(&(x, y, c)) {
@@ -61,7 +63,7 @@ pub fn run(part: &Part) -> Result<usize, Report> {
             .collect_vec();
 
         // replace '*' and '.' with '+'
-        //let mut pipe_map_debug = pipe_map.clone();
+        let mut pipe_map_orig = pipe_map.clone();
         pipe_map.tiles = pipe_map
             .tiles
             .into_iter()
@@ -75,44 +77,36 @@ pub fn run(part: &Part) -> Result<usize, Report> {
             })
             .collect_vec();
 
-        debug!("\n{}", pipe_map.pretty_print()?);
-
-        let (mut insiders, mut outsiders) = (Vec::new(), Vec::new());
-
-        for coord in candidates {
-            // skip if already seen
-            if outsiders.contains(&coord) || insiders.contains(&coord) {
+        for coord in &candidates {
+            if outsiders.contains(coord) || insiders.contains(coord) {
                 continue;
             }
-
-            let mut filled = pipe_map.flood_fill(x, y);
-            // let mut filled = pipe_map
-            //     .flood_fill(x, y)
-            //     .into_iter()
-            //     .map(|(x, y, _c)| (x, y))                
-            //     //.filter(|n| !insiders.contains(n) && !outsiders.contains(n))
-            //     .collect_vec();
+            let (x, y) = coord;
+            let mut filled =
+                pipe_map.flood_fill(*x, *y).into_iter().map(|(x, y, _c)| (x, y)).collect_vec();
 
             // if filled contains an edge tile, this is outside
-            let outside = filled.iter().find(|(x, y, _c)| {
-                *x <= 1
-                    || *x >= pipe_map.tiles[*y].len() - 2
-                    || *y <= 1
-                    || *y >= pipe_map.tiles.len() - 2
+            let is_outside = filled.iter().find(|(x, y)| {
+                *x < 1
+                    || *x >= pipe_map.tiles[*y].len() - 1
+                    || *y < 1
+                    || *y >= pipe_map.tiles.len() - 1
             });
 
-            match outside {
-                Some(_) => outsiders.append(&mut filled),
-                None => insiders.append(&mut filled),
+            match is_outside.is_some() {
+                true => outsiders.append(&mut filled),
+                false => insiders.append(&mut filled),
             };
-
-            break
         }
 
-        // for debugging and visualization
-        pipe_map.tiles.iter_mut().enumerate().for_each(|(y, row)| {
+        outsiders.retain(|o| candidates.contains(o));
+        insiders.retain(|i| candidates.contains(i));
+
+        //insiders.iter().for_each(|i| debug!("insider: {i:?}"));
+
+        pipe_map_orig.tiles.iter_mut().enumerate().for_each(|(y, row)| {
             *row = row
-                .into_iter()
+                .iter_mut()
                 .enumerate()
                 .map(|(x, c)| {
                     if outsiders.contains(&(x, y)) {
@@ -125,14 +119,14 @@ pub fn run(part: &Part) -> Result<usize, Report> {
                 })
                 .collect_vec();
         });
-        debug!("\n{}", pipe_map.pretty_print()?);
 
-        insiders.into_iter().for_each(|c| debug!("insider: {c:?}"));
+        //pipe_map_orig.tiles.iter().for_each(|row| println!("{}", row.iter().join("")));
+        debug!("\n{}", pipe_map_orig.pretty_print()?);
     }
 
     let result = match *part {
         Part::Part1 => pipe_loop.len() / 2,
-        Part::Part2 => 2,
+        Part::Part2 => insiders.len(),
     };
 
     info!("Answer: {result}");

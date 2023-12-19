@@ -163,7 +163,7 @@ impl Map {
                     //println!("\t\tnext_nodes: {next_nodes:?}");
 
                     next_nodes.iter().for_each(|n| {
-                        filled.push(n.clone());
+                        filled.push(*n);
                     });
                     next_nodes
                 })
