@@ -6,7 +6,6 @@ use color_eyre::eyre::{Report, Result};
 use itertools::Itertools;
 use log::debug;
 use log::info;
-use std::collections::HashMap;
 use std::str::FromStr;
 
 /// Day 10 - Pipes
@@ -32,73 +31,19 @@ pub fn run(part: &Part) -> Result<usize, Report> {
     if *part == Part::Part2 {
         pipe_map = pipe_map.push_pipe_rows();
         pipe_map = pipe_map.push_pipe_columns();
-        // debug
-        debug!("\n{}", pipe_map.pretty_print()?);
-        //pipe_map.tiles.iter().for_each(|row| debug!("{}", row.iter().join("")));
     }
 
     // find start location
     let y = pipe_map.tiles.iter().position(|row| row.contains(&'S')).unwrap();
     let x = pipe_map.tiles[y].iter().position(|x| *x == 'S').unwrap();
-    let c = pipe_map.tiles[y][x];
 
-    // keep track of pipe connections we've seen
-    let mut pipe_history = HashMap::new();
-    let curr = (x, y, c);
-    pipe_history.insert(curr, curr);
+    debug!("\n{}", pipe_map.pretty_print()?);
+    let pipe_loop = pipe_map.flood_fill(x, y);
 
-    // keep track of where we are currently (will be multple tiles)
-    let mut current = vec![curr];
-    let mut loop_found = false;
-    let mut counter = 0;
-
-    while !loop_found {
-        counter += 1;
-        //debug!("counter: {counter}");
-        current = current
-            .into_iter()
-            .flat_map(|curr| {
-                let prev = pipe_history.get(&curr).unwrap();
-                //debug!("\tcurrent: {curr:?}, previous: {prev:?}");
-
-                // get next node connections
-                let next_nodes = pipe_map
-                    .get_pipe_neighbors(curr.0, curr.1)
-                    .into_iter()
-                    // don't backtrack to previous node
-                    .filter(|n| *n != (prev.0, prev.1))
-                    // keep valid connections back to current
-                    .filter(|(x, y)| {
-                        let n = pipe_map.get_pipe_neighbors(*x, *y);
-                        n.contains(&(curr.0, curr.1))
-                    })
-                    .map(|(x, y)| (x, y, pipe_map.tiles[y][x]))
-                    .collect_vec();
-
-                // loop break check
-                for n in next_nodes.clone() {
-                    if loop_found {
-                        break;
-                    }
-                    match pipe_history.contains_key(&n) {
-                        true => loop_found = true,
-                        false => _ = pipe_history.insert(n, curr),
-                    };
-                    //debug!("\t\tnext: {n:?}, loop_found: {loop_found}");
-                }
-                next_nodes
-            })
-            .collect_vec();
-
-        if loop_found {
-            break;
-        }
-    }
-
-    // in part 2, find all tiles inside loop,
-    // all tiles that are not in pipe history are candidates
-    // if we can walk from a coordinate to an edge, it is outside
+    // in part 2, find all tiles inside loop
     if *part == Part::Part2 {
+
+        // identify non-loop coords as candidates
         let candidates = (0..pipe_map.tiles.len())
             .filter(|y| *y > 1 && *y < pipe_map.tiles.len() - 2)
             .flat_map(|y| {
@@ -106,8 +51,8 @@ pub fn run(part: &Part) -> Result<usize, Report> {
                     .filter(|x| *x > 1 && *x < pipe_map.tiles[y].len() - 2)
                     .filter_map(|x| {
                         let c = pipe_map.tiles[y][x];
-                        match c != '*' && !pipe_history.contains_key(&(x, y, c)) {
-                            true => Some((x, y, c)),
+                        match c != '*' && !pipe_loop.contains(&(x, y, c)) {
+                            true => Some((x, y)),
                             false => None,
                         }
                     })
@@ -115,11 +60,78 @@ pub fn run(part: &Part) -> Result<usize, Report> {
             })
             .collect_vec();
 
-        candidates.into_iter().for_each(|c| debug!("candidate: {c:?}"));
+        // replace '*' and '.' with '+'
+        //let mut pipe_map_debug = pipe_map.clone();
+        pipe_map.tiles = pipe_map
+            .tiles
+            .into_iter()
+            .map(|row| {
+                row.into_iter()
+                    .map(|c| match c == '*' || c == '.' {
+                        true => '+',
+                        false => c,
+                    })
+                    .collect_vec()
+            })
+            .collect_vec();
+
+        debug!("\n{}", pipe_map.pretty_print()?);
+
+        let (mut insiders, mut outsiders) = (Vec::new(), Vec::new());
+
+        for coord in candidates {
+            // skip if already seen
+            if outsiders.contains(&coord) || insiders.contains(&coord) {
+                continue;
+            }
+
+            let mut filled = pipe_map.flood_fill(x, y);
+            // let mut filled = pipe_map
+            //     .flood_fill(x, y)
+            //     .into_iter()
+            //     .map(|(x, y, _c)| (x, y))                
+            //     //.filter(|n| !insiders.contains(n) && !outsiders.contains(n))
+            //     .collect_vec();
+
+            // if filled contains an edge tile, this is outside
+            let outside = filled.iter().find(|(x, y, _c)| {
+                *x <= 1
+                    || *x >= pipe_map.tiles[*y].len() - 2
+                    || *y <= 1
+                    || *y >= pipe_map.tiles.len() - 2
+            });
+
+            match outside {
+                Some(_) => outsiders.append(&mut filled),
+                None => insiders.append(&mut filled),
+            };
+
+            break
+        }
+
+        // for debugging and visualization
+        pipe_map.tiles.iter_mut().enumerate().for_each(|(y, row)| {
+            *row = row
+                .into_iter()
+                .enumerate()
+                .map(|(x, c)| {
+                    if outsiders.contains(&(x, y)) {
+                        'O'
+                    } else if insiders.contains(&(x, y)) {
+                        'I'
+                    } else {
+                        *c
+                    }
+                })
+                .collect_vec();
+        });
+        debug!("\n{}", pipe_map.pretty_print()?);
+
+        insiders.into_iter().for_each(|c| debug!("insider: {c:?}"));
     }
 
     let result = match *part {
-        Part::Part1 => counter,
+        Part::Part1 => pipe_loop.len() / 2,
         Part::Part2 => 2,
     };
 
