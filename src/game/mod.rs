@@ -91,12 +91,22 @@ impl Map {
 
     // Get coordinates of all neighboring cells.
     pub fn get_neighbors(&self, x: usize, y: usize) -> Vec<(usize, usize)> {
-        let (x, y) = (x as i32, y as i32);
+        let (x, y) = (x as isize, y as isize);
         (x - 1..=x + 1)
             .flat_map(|x| (y - 1..=y + 1).map(|y| (x, y)).collect_vec())
-            .filter(|(x_i, y_i)| (*x_i != x || *y_i != y) && (*x_i >= 0 && *y_i >= 0))
+            .filter(|(x_i, y_i)| (*x_i != x || *y_i != y))
+            .filter(|(x, y)| self.is_tile(*x, *y))
             .map(|(x, y)| (x as usize, y as usize))
-            .filter(|(x, y)| *x < self.tiles[*y].len() && *y < self.tiles.len())
+            .collect_vec()
+    }
+
+    // Get neighbors cells in cross pattern, no diagnoal
+    pub fn get_simple_neighbors(&self, x: usize, y: usize) -> Vec<(usize, usize)> {
+        let (x, y) = (x as isize, y as isize);
+        vec![(x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)]
+            .into_iter()
+            .filter(|(x, y)| self.is_tile(*x, *y))
+            .map(|(x, y)| (x as usize, y as usize))
             .collect_vec()
     }
 
@@ -130,41 +140,83 @@ impl Map {
         match x >= 0 && y >= 0 {
             true => {
                 let (x, y) = (x as usize, y as usize);
-                x < self.tiles[y].len() && y < self.tiles.len()
+                match y < self.tiles.len() {
+                    true => x < self.tiles[y].len(),
+                    false => false,
+                }
             }
             false => false,
         }
     }
 
-    /// flood fill algorithm
-    pub fn flood_fill(
-        &self,
-        x: usize,
-        y: usize,
-        mut f: Vec<(usize, usize)>,
-    ) -> Vec<(usize, usize)> {
-        f.push((x, y));
+    /// flood fill algorithm, but following pipes
+    pub fn flood_fill(&self, x: usize, y: usize, follow_pipes: bool) -> Vec<(usize, usize)> {
+        let mut f = Vec::new();
 
-        let next_nodes = self
-            .get_pipe_neighbors(x, y)
-            .into_iter()
-            // don't backtrack
-            .filter(|(xn, yn)| !f.contains(&(*xn, *yn)))
-            // don't enter start node
-            .filter(|(xn, yn)| self.tiles[*yn][*xn] != 'S')
-            // make sure pipe goes both ways
-            .filter(|(xn, yn)| self.get_pipe_neighbors(*xn, *yn).contains(&(x, y)))
-            .collect_vec();
+        // if not following pipes, we can only fill ground ('.')
+        if !follow_pipes && self.tiles[y][x] != '.' {
+            return f;
+        }
+        let mut current = vec![(x, y)];
 
-        for (x, y) in next_nodes {
-            if f.contains(&(x, y)) {
-                continue;
-            }
-            f = self.flood_fill(x, y, f.clone());
+        while !current.is_empty() {
+            current = current
+                .into_iter()
+                .flat_map(|(x, y)| {
+                    let mut next_nodes = match follow_pipes {
+                        true => self
+                            .get_pipe_neighbors(x, y)
+                            .into_iter()
+                            .filter(|(xn, yn)| self.get_pipe_neighbors(*xn, *yn).contains(&(x, y)))
+                            .collect_vec(),
+                        false => self
+                            .get_simple_neighbors(x, y)
+                            .into_iter()
+                            .filter(|(x, y)| self.tiles[*y][*x] == '.')
+                            .collect_vec(),
+                    };
+
+                    // don't backtrack
+                    next_nodes.retain(|(x, y)| !f.contains(&(*x, *y)));
+
+                    f.extend(next_nodes.clone());
+                    next_nodes
+                })
+                .collect_vec();
         }
 
         f
     }
+
+    // /// flood fill algorithm
+    // pub fn flood_fill(
+    //     &self,
+    //     x: usize,
+    //     y: usize,
+    //     mut f: Vec<(usize, usize)>,
+    // ) -> Vec<(usize, usize)> {
+    //     f.push((x, y));
+
+    //     let next_nodes = self
+    //         .get_pipe_neighbors(x, y)
+    //         .into_iter()
+    //         // don't backtrack
+    //         .filter(|(xn, yn)| !f.contains(&(*xn, *yn)))
+    //         // don't enter start node
+    //         .filter(|(xn, yn)| self.tiles[*yn][*xn] != 'S')
+    //         // make sure pipe goes both ways
+    //         .filter(|(xn, yn)| self.get_pipe_neighbors(*xn, *yn).contains(&(x, y)))
+    //         .collect_vec();
+
+    //     for (x, y) in next_nodes {
+    //         if f.contains(&(x, y)) {
+    //             continue;
+    //         }
+    //         f = self.flood_fill(x, y, f.clone());
+    //     }
+
+    //     f
+    // }
 
     pub fn zoom_in(&mut self) {
         self.push_pipe_columns();

@@ -24,7 +24,8 @@ pub fn run(part: &Part) -> Result<usize, Report> {
 
     // find the loop by flood fill, starting at 'S'
     debug!("Finding pipe loop.");
-    let pipe_loop = pipe_map.flood_fill(x, y, vec![]);
+    let follow_pipes = true;
+    let pipe_loop = pipe_map.flood_fill(x, y, follow_pipes);
 
     // in part 2, find all tiles inside and outside the loop
     let (mut insiders, mut outsiders) = (Vec::new(), Vec::new());
@@ -38,7 +39,7 @@ pub fn run(part: &Part) -> Result<usize, Report> {
         (0..=y_max).for_each(|y| {
             (0..=x_max).for_each(|x| {
                 if !pipe_loop.contains(&(x, y)) {
-                    pipe_map.tiles[y][x] = '+';
+                    pipe_map.tiles[y][x] = '.';
                     if x % 2 == 0 && y % 2 == 0 {
                         candidates.push((x, y));
                     }
@@ -49,7 +50,8 @@ pub fn run(part: &Part) -> Result<usize, Report> {
         debug!("Flood filling candidates.");
         while !candidates.is_empty() {
             let (x, y) = candidates.first().cloned().unwrap();
-            let mut filled = pipe_map.flood_fill(x, y, vec![]);
+            let follow_pipes = false;
+            let mut filled = pipe_map.flood_fill(x, y, follow_pipes);
             filled.retain(|(x, y)| candidates.contains(&(*x, *y)));
 
             // check if fill went to the edge (ie outside)
