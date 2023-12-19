@@ -27,10 +27,9 @@ pub fn run(part: &Part) -> Result<usize, Report> {
     let input = utils::read_to_string("data/day_10.txt")?;
     let mut pipe_map = Map::from_str(&input)?;
 
-    // part 2, push apart each row and column to spaces between pipes
+    // part 2, zoom in (ie. push pipes apart)
     if *part == Part::Part2 {
-        pipe_map = pipe_map.push_pipe_rows();
-        pipe_map = pipe_map.push_pipe_columns();
+        pipe_map.zoom_in();
     }
 
     // find start location
@@ -38,54 +37,51 @@ pub fn run(part: &Part) -> Result<usize, Report> {
     let x = pipe_map.tiles[y].iter().position(|x| *x == 'S').unwrap();
 
     // fill the loop from start
-    let pipe_loop = pipe_map.flood_fill(x, y);
+    debug!("Identifying pipe loop.");
+    let pipe_loop = pipe_map.flood_fill(x, y).into_iter().map(|(x, y, _c)| (x, y)).collect_vec();
 
     // in part 2, find all tiles inside loop
     let (mut insiders, mut outsiders) = (Vec::new(), Vec::new());
     if *part == Part::Part2 {
+        // exclude odd number rows and columns (zoom), and pipe loop
+        debug!("Identifying inside candidates.");
         let candidates = (0..pipe_map.tiles.len())
-            // exclude odd number rows and columns (zoom)
-            .filter(|y| y % 2 == 0)
-            //.filter(|y| *y > 0 && *y < pipe_map.tiles.len() - 1)
+            .step_by(2)
             .flat_map(|y| {
                 (0..pipe_map.tiles[y].len())
-                    //.filter(|x| *x > 0 && *x < pipe_map.tiles[y].len() - 1)
-                    .filter(|x| x % 2 == 0)
-                    .filter_map(|x| {
-                        let c = pipe_map.tiles[y][x];
-                        match c != '*' && !pipe_loop.contains(&(x, y, c)) {
-                            true => Some((x, y)),
-                            false => None,
-                        }
-                    })
+                    .step_by(2)
+                    .filter_map(|x| (!pipe_loop.contains(&(x, y))).then_some((x, y)))
                     .collect_vec()
             })
             .collect_vec();
 
         // replace '*' and '.' with '+'
-        let mut pipe_map_orig = pipe_map.clone();
-        pipe_map.tiles = pipe_map
-            .tiles
-            .into_iter()
-            .map(|row| {
-                row.into_iter()
-                    .map(|c| match c == '*' || c == '.' {
-                        true => '+',
-                        false => c,
-                    })
-                    .collect_vec()
-            })
-            .collect_vec();
+        pipe_map.tiles.iter_mut().for_each(|row| {
+            *row = row
+                .iter()
+                .map(|c| match *c == '*' || *c == '.' {
+                    true => '+',
+                    false => *c,
+                })
+                .collect_vec()
+        });
 
         for coord in &candidates {
             if outsiders.contains(coord) || insiders.contains(coord) {
                 continue;
             }
+            debug!("coord: {coord:?}");
             let (x, y) = coord;
-            let mut filled =
-                pipe_map.flood_fill(*x, *y).into_iter().map(|(x, y, _c)| (x, y)).collect_vec();
+            let mut filled = pipe_map
+                .flood_fill(*x, *y)
+                .into_iter()
+                .map(|(x, y, _c)| (x, y))
+                //.filter(|n| candidates.contains(n))
+                .collect_vec();
+            debug!("\tfilled: {filled:?}");
 
             // if filled contains an edge tile, this is outside
+            // or if it's a self-contained loop...
             let is_outside = filled.iter().find(|(x, y)| {
                 *x < 1
                     || *x >= pipe_map.tiles[*y].len() - 1
@@ -99,12 +95,11 @@ pub fn run(part: &Part) -> Result<usize, Report> {
             };
         }
 
-        outsiders.retain(|o| candidates.contains(o));
         insiders.retain(|i| candidates.contains(i));
 
         //insiders.iter().for_each(|i| debug!("insider: {i:?}"));
 
-        pipe_map_orig.tiles.iter_mut().enumerate().for_each(|(y, row)| {
+        pipe_map.tiles.iter_mut().enumerate().for_each(|(y, row)| {
             *row = row
                 .iter_mut()
                 .enumerate()
@@ -120,8 +115,11 @@ pub fn run(part: &Part) -> Result<usize, Report> {
                 .collect_vec();
         });
 
-        //pipe_map_orig.tiles.iter().for_each(|row| println!("{}", row.iter().join("")));
-        debug!("\n{}", pipe_map_orig.pretty_print()?);
+        pipe_map.zoom_out();
+        //debug!("\n{}", pipe_map.pretty_print()?);
+        pipe_map.tiles.iter().for_each(|row| {
+            println!("{}", row.iter().join(""));
+        });
     }
 
     let result = match *part {

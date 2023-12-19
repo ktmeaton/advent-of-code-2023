@@ -178,9 +178,25 @@ impl Map {
         filled
     }
 
+    pub fn zoom_in(&mut self) {
+        self.push_pipe_columns();
+        self.push_pipe_rows();
+    }
+
+    pub fn zoom_out(&mut self) {
+        self.tiles = self
+            .tiles
+            .clone()
+            .into_iter()
+            .enumerate()
+            .filter_map(|(y, row)| (y % 2 == 0).then_some(row))
+            .map(|row| row.into_iter().step_by(2).collect_vec())
+            .collect_vec();
+    }
+
     /// push apart each pipe row
-    pub fn push_pipe_rows(&self) -> Map {
-        let tiles = self
+    pub fn push_pipe_rows(&mut self) {
+        self.tiles = self
             .tiles
             .iter()
             .enumerate()
@@ -201,13 +217,11 @@ impl Map {
                 }
             })
             .collect_vec();
-
-        Map { tiles }
     }
 
     /// push apart each pipe column
-    pub fn push_pipe_columns(&self) -> Map {
-        let tiles = (0..self.tiles.len())
+    pub fn push_pipe_columns(&mut self) {
+        self.tiles = (0..self.tiles.len())
             .map(|y| {
                 (0..self.tiles[y].len())
                     .flat_map(|x| {
@@ -228,8 +242,6 @@ impl Map {
                     .collect_vec()
             })
             .collect();
-
-        Map { tiles }
     }
 
     pub fn pretty_print(&self) -> Result<String, Report> {
