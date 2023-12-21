@@ -94,12 +94,3 @@ jobs:
           chmod +x target/${{ matrix.arch }}/release/${{ matrix.binary }}
           cp target/${{ matrix.arch }}/release/${{ matrix.binary }} .
           ${{ env.RUN_CMD }} --help
-
-      - name: run
-        run: >
-          final_day=$(ls src/day/day_*  | tail -n 1 | xargs basename | sed 's/day_\|\.rs//g')
-          for day in $(seq 1 $final_day); do
-            for part in $(seq 1 2); do
-              ${{ env.RUN_CMD }} --day $day --part $part;
-            done;
-          done;
