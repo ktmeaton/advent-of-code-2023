@@ -61,6 +61,25 @@ impl Map {
         Some((part_number, coordinates))
     }
 
+    pub fn distance(&self, t1: (usize, usize), t2: (usize, usize)) -> usize {
+        ((t2.0 as isize - t1.0 as isize).abs() + (t2.1 as isize - t1.1 as isize).abs()) as usize
+    }
+
+    /// Make this not single character
+    pub fn search(&self, query: &char) -> Vec<(usize, usize)> {
+        self.tiles
+            .iter()
+            .enumerate()
+            .filter(|(_y, row)| row.contains(query))
+            .flat_map(|(y, row)| {
+                row.iter()
+                    .enumerate()
+                    .filter_map(|(x, c)| (c == query).then_some((x, y)))
+                    .collect_vec()
+            })
+            .collect_vec()
+    }
+
     pub fn find_tile(&self, tile: &Tile) -> Vec<Vec<(usize, usize)>> {
         let coordinates = self
             .tiles

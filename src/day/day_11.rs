@@ -10,42 +10,37 @@ use std::str::FromStr;
 /// Day 11
 pub fn run(part: &Part) -> Result<usize, Report> {
     let input = utils::read_to_string("data/day_11.txt")?;
-    let mut galaxy_map = Map::from_str(&input)?;
+    let galaxy_map = Map::from_str(&input)?;
 
-    // expand empty space horizontally (x)
-    let galaxy_x = galaxy_map
-        .tiles
-        .iter()
-        .filter(|row| row.contains(&'#'))
-        .flat_map(|row| {
-            row.iter().enumerate().filter_map(|(x, c)| (*c == '#').then_some(x)).collect_vec()
-        })
-        .unique()
-        .collect_vec();
-    let empty_x = (0..galaxy_map.tiles[0].len()).filter(|x| !galaxy_x.contains(x)).collect_vec();
-    galaxy_map.tiles.iter_mut().for_each(|row| {
-        empty_x.iter().enumerate().for_each(|(i, x)| row.insert(x + i, '.'));
+    // find empty space, not occupied by galaxies
+    let mut galaxies = galaxy_map.search(&'#');
+    let (gx, gy): (Vec<usize>, Vec<usize>) = galaxies.clone().into_iter().unzip();
+
+    let x_max = galaxy_map.tiles[0].len() - 1;
+    let empty_x = (0..=x_max).filter(|x| !gx.contains(x)).unique().collect_vec();
+    let empty_y = (0..galaxy_map.tiles.len()).filter(|y| !gy.contains(y)).unique().collect_vec();
+
+    // expand empty space, at different rates
+    let e = match *part {
+        Part::Part1 => 2,
+        Part::Part2 => 1000000,
+    };
+
+    galaxies.iter_mut().enumerate().for_each(|(i, (gx, gy))| {
+        let (gx_orig, gy_orig) = (*gx, *gy);
+        let xn = empty_x.iter().filter(|x| *x < gx).count();
+        let yn = empty_y.iter().filter(|y| *y < gy).count();
+        if xn > 0 {
+            *gx = *gx - xn + (xn * e);
+        }
+        if yn > 0 {
+            *gy = *gy - yn + (yn * e);
+        }
+        debug!("g{}: {gx_orig}, {gy_orig} => {gx}, {gy}", i + 1);
     });
-    // expand empty space vertically (y)
-    galaxy_map.tiles = galaxy_map
-        .tiles
-        .into_iter()
-        .flat_map(|row| match row.contains(&'#') {
-            true => vec![row],
-            false => vec![row.clone(), row.clone()],
-        })
-        .collect_vec();
 
-    // pairwise distances between new expanded galaxies
-    let galaxies = galaxy_map
-        .tiles
-        .iter()
-        .enumerate()
-        .flat_map(|(y, row)| {
-            row.iter().enumerate().filter_map(|(x, c)| (*c == '#').then_some((x, y))).collect_vec()
-        })
-        .collect_vec();
-    let distances = galaxies[0..galaxies.len() - 1]
+    // sum of pairwise distances
+    let result = galaxies[0..galaxies.len() - 1]
         .iter()
         .enumerate()
         .flat_map(|(i1, g1)| {
@@ -62,16 +57,7 @@ pub fn run(part: &Part) -> Result<usize, Report> {
                 })
                 .collect_vec()
         })
-        .collect_vec();
-
-    galaxy_map.tiles.iter().for_each(|row| {
-        debug!("{}", row.iter().join(""));
-    });
-
-    let result = match *part {
-        Part::Part1 => distances.into_iter().sum::<usize>(),
-        Part::Part2 => 2,
-    };
+        .sum();
 
     info!("Answer: {result}");
     Ok(result)
@@ -87,7 +73,7 @@ fn part_1() -> Result<(), Report> {
 
 #[test]
 fn part_2() -> Result<(), Report> {
-    let expected = 2;
+    let expected = 603020563700;
     let observed = run(&Part::Part2)?;
     assert_eq!(observed, expected);
     Ok(())
