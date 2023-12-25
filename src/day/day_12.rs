@@ -9,39 +9,53 @@ use log::info;
 use onig::Regex;
 
 /// Day 12 - Hot Springs
-pub fn run(_part: &Part) -> Result<usize, Report> {
+pub fn run(part: &Part) -> Result<usize, Report> {
     let input = utils::read_to_string("data/day_12.txt")?;
     let result = input
         .split('\n')
         .enumerate()
+        //.take_while(|(i, _)| *i == 0)
         .map(|(i, l)| {
             let split = l.split(' ').collect_vec();
             let operational =
                 split[1].split(',').filter_map(|s| s.parse::<usize>().ok()).collect_vec();
             let springs = split[0];
+
+            // test
+            // let springs = "??#??#?#?#?.??????";
+            // let operational = [9, 1, 1];
+
+            let unfold = match *part {
+                Part::Part1 => 1,
+                Part::Part2 => 5,
+            };
+            let springs = (0..unfold).map(|_| springs).join("?");
+            let operational =
+                operational.iter().cycle().take(operational.len() * unfold).cloned().collect_vec();
             debug!("i: {i}, springs: {springs:?}, operational: {operational:?}");
-            let local = local_locations(springs, &operational);
-            debug!("\tlocal:");
-            local.iter().for_each(|l| {
-                debug!("\t\t{l:?}");
-            });
+            let local = local_locations(&springs, &operational);
+            // debug!("\tlocal:");
+            // local.iter().for_each(|l| {
+            //     debug!("\t\t{l:?}");
+            // });
             let known = springs
                 .chars()
                 .enumerate()
                 .filter_map(|(i, c)| (c == '#').then_some(i))
                 .collect_vec();
+            debug!("\tFINDING GLOBAL");
             let global = global_locations(&local, &known);
             debug!("\tglobal: {}", global.len());
-            debug!("\t\toriginal: {springs}");
-            global.iter().for_each(|pos| {
-                let mut solution = vec!['.'; springs.len()];
-                pos.iter().for_each(|r| {
-                    r.clone().for_each(|i| {
-                        solution[i] = '#';
-                    });
-                });
-                debug!("\t\tsolution: {}", solution.iter().join(""));
-            });
+            // debug!("\t\toriginal: {springs}");
+            // global.iter().for_each(|pos| {
+            //     let mut solution = vec!['.'; springs.len()];
+            //     pos.iter().for_each(|r| {
+            //         r.clone().for_each(|i| {
+            //             solution[i] = '#';
+            //         });
+            //     });
+            //     debug!("\t\tsolution: {}", solution.iter().join(""));
+            // });
             global.len()
         })
         .sum();
