@@ -8,6 +8,48 @@ use log::debug;
 use log::info;
 use onig::Regex;
 
+/// Day 12 - Hot Springs
+pub fn run(_part: &Part) -> Result<usize, Report> {
+    let input = utils::read_to_string("data/day_12.txt")?;
+    let result = input
+        .split('\n')
+        .enumerate()
+        .map(|(i, l)| {
+            let split = l.split(' ').collect_vec();
+            let operational =
+                split[1].split(',').filter_map(|s| s.parse::<usize>().ok()).collect_vec();
+            let springs = split[0];
+            debug!("i: {i}, springs: {springs:?}, operational: {operational:?}");
+            let local = local_locations(springs, &operational);
+            debug!("\tlocal:");
+            local.iter().for_each(|l| {
+                debug!("\t\t{l:?}");
+            });
+            let known = springs
+                .chars()
+                .enumerate()
+                .filter_map(|(i, c)| (c == '#').then_some(i))
+                .collect_vec();
+            let global = global_locations(&local, &known);
+            debug!("\tglobal: {}", global.len());
+            debug!("\t\toriginal: {springs}");
+            global.iter().for_each(|pos| {
+                let mut solution = vec!['.'; springs.len()];
+                pos.iter().for_each(|r| {
+                    r.clone().for_each(|i| {
+                        solution[i] = '#';
+                    });
+                });
+                debug!("\t\tsolution: {}", solution.iter().join(""));
+            });
+            global.len()
+        })
+        .sum();
+
+    info!("Answer: {result}");
+    Ok(result)
+}
+
 pub fn local_locations(springs: &str, operational: &[usize]) -> Vec<Vec<RangeInclusive<usize>>> {
     operational
         .iter()
@@ -102,47 +144,6 @@ pub fn global_locations(
             k.len() == known.len()
         })
         .collect_vec()
-}
-/// Day 12 - Hot Springs
-pub fn run(_part: &Part) -> Result<usize, Report> {
-    let input = utils::read_to_string("data/day_12.txt")?;
-    let result = input
-        .split('\n')
-        .enumerate()
-        .map(|(i, l)| {
-            let split = l.split(' ').collect_vec();
-            let operational =
-                split[1].split(',').filter_map(|s| s.parse::<usize>().ok()).collect_vec();
-            let springs = split[0];
-            debug!("i: {i}, springs: {springs:?}, operational: {operational:?}");
-            let local = local_locations(springs, &operational);
-            debug!("\tlocal:");
-            local.iter().for_each(|l| {
-                debug!("\t\t{l:?}");
-            });
-            let known = springs
-                .chars()
-                .enumerate()
-                .filter_map(|(i, c)| (c == '#').then_some(i))
-                .collect_vec();
-            let global = global_locations(&local, &known);
-            debug!("\tglobal: {}", global.len());
-            debug!("\t\toriginal: {springs}");
-            global.iter().for_each(|pos| {
-                let mut solution = vec!['.'; springs.len()];
-                pos.iter().for_each(|r| {
-                    r.clone().for_each(|i| {
-                        solution[i] = '#';
-                    });
-                });
-                debug!("\t\tsolution: {}", solution.iter().join(""));
-            });
-            global.len()
-        })
-        .sum();
-
-    info!("Answer: {result}");
-    Ok(result)
 }
 
 #[test]
