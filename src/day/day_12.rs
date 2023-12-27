@@ -1,62 +1,47 @@
 use crate::day::Part;
 use crate::utils;
 
+use cached::proc_macro::cached;
+use cached::UnboundCache;
 use color_eyre::eyre::{Report, Result};
-use core::ops::RangeInclusive;
-use itertools::{iproduct, Itertools};
-use log::debug;
-use log::info;
+use itertools::Itertools;
+use log::{debug, info};
 use onig::Regex;
 
 /// Day 12 - Hot Springs
+///
+/// Recursions + memoization
 pub fn run(part: &Part) -> Result<usize, Report> {
-    let input = utils::read_to_string("data/day_12.txt")?;
-    let result = input
-        .split('\n')
+    // Parse puzzle input
+    let input = utils::read_to_string("data/day_12_test.txt")?;
+    let lines = input.split('\n').map(|l| l.split(' ').collect_vec()).collect_vec();
+
+    // let springs = "???.###";
+    // let damaged = [1,1,3];
+    // let result = arrangements(springs, &damaged, 0);
+
+    // let cache = ARRANGEMENTS.lock().unwrap();
+    // debug!("cache: {cache:?}");
+    // std::mem::drop(cache);
+
+    let result = lines
+        .into_iter()
         .enumerate()
-        //.take_while(|(i, _)| *i == 0)
         .map(|(i, l)| {
-            let split = l.split(' ').collect_vec();
-            let operational =
-                split[1].split(',').filter_map(|s| s.parse::<usize>().ok()).collect_vec();
-            let springs = split[0];
+            let springs = l[0];
+            let damaged = l[1].split(',').filter_map(|s| s.parse::<usize>().ok()).collect_vec();
 
-            // test
-            // let springs = "??#??#?#?#?.??????";
-            // let operational = [9, 1, 1];
-
+            // set unfold level for part 2
             let unfold = match *part {
                 Part::Part1 => 1,
                 Part::Part2 => 5,
             };
-            let springs = (0..unfold).map(|_| springs).join("?");
-            let operational =
-                operational.iter().cycle().take(operational.len() * unfold).cloned().collect_vec();
-            debug!("i: {i}, springs: {springs:?}, operational: {operational:?}");
-            let local = local_locations(&springs, &operational);
-            // debug!("\tlocal:");
-            // local.iter().for_each(|l| {
-            //     debug!("\t\t{l:?}");
-            // });
-            let known = springs
-                .chars()
-                .enumerate()
-                .filter_map(|(i, c)| (c == '#').then_some(i))
-                .collect_vec();
-            debug!("\tFINDING GLOBAL");
-            let global = global_locations(&local, &known);
-            debug!("\tglobal: {}", global.len());
-            // debug!("\t\toriginal: {springs}");
-            // global.iter().for_each(|pos| {
-            //     let mut solution = vec!['.'; springs.len()];
-            //     pos.iter().for_each(|r| {
-            //         r.clone().for_each(|i| {
-            //             solution[i] = '#';
-            //         });
-            //     });
-            //     debug!("\t\tsolution: {}", solution.iter().join(""));
-            // });
-            global.len()
+            let springs = (0..unfold).map(|_| springs).join("?").chars().join("");
+            let damaged =
+                damaged.iter().cycle().take(damaged.len() * unfold).cloned().collect_vec();
+
+            debug!("i: {i}, springs: {springs}, damaged: {damaged:?}");
+            arrangements(&springs, &damaged, 0)
         })
         .sum();
 
@@ -64,105 +49,133 @@ pub fn run(part: &Part) -> Result<usize, Report> {
     Ok(result)
 }
 
-pub fn local_locations(springs: &str, operational: &[usize]) -> Vec<Vec<RangeInclusive<usize>>> {
-    operational
-        .iter()
-        .enumerate()
-        .map(|(i, o)| {
-            //debug!("i: {i}, o: {o}");
-            // find the operational springs '#' or '?'
-            // a specific number of times consecutive (o)
-            // negative lookahead and negative lookbehind for '#'
-            let mut patterns = format!("[#|\\?]{{{o}}}");
-            // no operational spring directly before or after
-            patterns = "(?<!#)".to_string() + &patterns + "(?!\\#)";
-            // At the beginning, no springs may come before
-            patterns = if i == 0 {
-                "(?<!.*#.*)".to_string() + &patterns
-            }
-            // N spring(s) must come before
-            else {
-                let before = i + operational[0..i].iter().sum::<usize>();
-                format!("(?<=.{{{before},}})") + &patterns
-            };
+/// Use an explicit cache-type with a custom creation block and custom cache-key generating block
+#[cached(
+    type = "UnboundCache<String, usize>",
+    create = "{ UnboundCache::new() }",
+    convert = r#"{ format!("{springs}_{damaged:?}") }"#
+)]
+fn arrangements(springs: &str, damaged: &[usize], i: usize) -> usize {
 
-            // At the end, no springs may come after
-            patterns = if i == operational.len() - 1 {
-                patterns + "(?!.*#.*)"
-            }
-            // N springs must come after
-            else {
-                let after =
-                    (operational.len() - 1 - i) + operational[i + 1..].iter().sum::<usize>();
-                patterns + format!("(?=.{{{after},}})").as_str()
-            };
+    // // cache inspection
+    // debug!("{springs}, {i}");
+    // let cache = ARRANGEMENTS.lock().unwrap();
+    // debug!("cache: {cache:?}");
+    // std::mem::drop(cache);
 
-            // wrap full expression in a lookahead, to get overlaps
-            patterns = "(?=".to_string() + &patterns + ")";
-
-            //debug!("\tpatterns: {patterns:?}");
-            // construct the regular expression to find these patterns
-            let re = Regex::new(&patterns).unwrap();
-            let matches = re.find_iter(springs);
-            let positions = matches
-                // convert to vector (6..9) = [6,7,8,9]
-                .map(|m| (m.0..m.0 + o).collect_vec())
-                // split into sliding windows: [6,7,8], [7,8,9]
-                .flat_map(|v| v.windows(*o).map(|o| o.to_owned()).collect_vec())
-                // convert sliding windows to range inclusive
-                .map(|v| v.iter().min().copied().unwrap()..=v.iter().max().copied().unwrap())
-                //.inspect(|v| debug!("\tv: {v:?}"))
-                .unique()
-                .collect_vec();
-            positions
-        })
-        .collect()
-}
-
-/// Global spring locations.
-///
-/// Combinations,
-///     [1..=1, 5..=5, 10..=12],
-///     [1..=1, 6..=6, 10..=12],
-///     [2..=2, 5..=5, 10..=12],
-///     [2..=2, 6..=6, 10..=12],
-pub fn global_locations(
-    local: &[Vec<RangeInclusive<usize>>],
-    known: &[usize],
-) -> Vec<Vec<RangeInclusive<usize>>> {
-    // check location of known springs, these must be acounted for
-    let mut combinations = Vec::new();
-
-    for i in 0..local.len() {
-        if combinations.is_empty() {
-            combinations = local[0].iter().cloned().map(|pos| vec![pos]).collect_vec();
-            continue;
+    // go to the final exact evaluation
+    if i == springs.len() || !springs.contains('?') {
+        match is_exact_match(springs, damaged) {
+            true => return 1,
+            false => return 0,
         }
-
-        let pos = &local[i];
-
-        combinations = iproduct!(combinations.clone(), pos)
-            .filter(|(curr, new)| curr.last().unwrap().end() + 1 < *new.start())
-            .map(|(mut curr, new)| {
-                curr.push(new.to_owned());
-                curr
-            })
-            .collect_vec();
     }
 
-    // make sure all known springs were found
-    combinations
-        .into_iter()
-        .filter(|c| {
-            let k = known.iter().filter_map(|i| c.iter().find(|r| r.contains(i))).collect_vec();
-            k.len() == known.len()
-        })
-        .collect_vec()
+    // decision tree split point
+    let s = springs.chars().collect_vec();
+
+    //debug!("cache: {ARRANGEMENTS:?}");
+    let mut result = 0;
+    match s[i] {
+        // try two hypotheses, ? is # or .
+        '?' => {
+            let hyp1 = s[0..i].iter().join("") + "#" + &s[i + 1..].iter().join("");
+            //debug!("\thyp1: {hyp1}");             
+            if is_approximate_match(&hyp1, damaged) {                
+                result += arrangements(&hyp1, damaged, i + 1);
+            }
+            let hyp2 = s[0..i].iter().join("") + "." + &s[i + 1..].iter().join("");               
+            //debug!("\thyp2: {hyp2}");            
+            if is_approximate_match(&hyp2, damaged) {                
+                result += arrangements(&hyp2, damaged, i + 1);
+            }
+        },
+        // otherwise, move onto next
+        _ => result += arrangements(springs, damaged, i + 1),
+    };
+
+    return result;
+}
+
+/// Check if the springs approximately match the expected damage pattern.
+fn is_approximate_match(springs: &str, expected: &[usize]) -> bool {
+
+    let matches = expected.iter().enumerate().map(|(i, o)| {
+        //debug!("i: {i}, o: {o}, springs: {springs}");
+        // find the operational springs '#' or '?', o times consecutive
+        // negative lookahead and negative lookbehind for '#'
+        let mut patterns = format!("[#|\\?]{{{o}}}");
+        // no operational spring directly before or after
+        patterns = "(?<!#)".to_string() + &patterns + "(?!\\#)";
+        // At the beginning, no springs may come before
+        patterns = if i == 0 {
+            "(?<!.*#.*)".to_string() + &patterns
+        }
+        // N spring(s) must come before
+        else {
+            let before = i + expected[0..i].iter().sum::<usize>();
+            format!("(?<=.{{{before},}})") + &patterns
+        };
+
+        // At the end, no springs may come after
+        patterns = if i == expected.len() - 1 {
+            patterns + "(?!.*#.*)"
+        }
+        // N springs must come after
+        else {
+            let after = (expected.len() - 1 - i) + expected[i + 1..].iter().sum::<usize>();
+            patterns + format!("(?=.{{{after},}})").as_str()
+        };
+
+        // wrap full expression in a lookahead, to get overlaps
+        //patterns = "(?=".to_string() + &patterns + ")";
+
+        //debug!("\tpatterns: {patterns:?}");
+        // construct the regular expression to find these patterns
+        let re = Regex::new(&patterns).unwrap();
+        re.find(springs).is_some()
+    })
+    .collect_vec();
+    !matches.contains(&false)
+}
+
+/// Check if the springs exactly match the expected damage pattern.
+fn is_exact_match(springs: &str, expected: &[usize]) -> bool {
+
+    let mut observed = Vec::new();
+    let mut damaged_spring: Option<usize> = None;
+
+    springs.chars().for_each(|c| {
+        damaged_spring = match damaged_spring {
+            // previous char was a spring
+            Some(l) => match c {
+                // still in spring
+                '#' => Some(l + 1),
+                // exited spring
+                _ => {
+                    observed.push(l);
+                    None
+                }
+            },
+            // previous char was not spring
+            None => match c {
+                // new spring begins
+                '#' => Some(1),
+                _ => None,
+            },
+        };
+    });
+
+    if let Some(l) = damaged_spring {
+        observed.push(l)
+    }
+
+    observed == expected
 }
 
 #[test]
 fn part_1() -> Result<(), Report> {
-    let expected = 1;
+    let expected = 7633;
     let observed = run(&Part::Part1)?;
     assert_eq!(observed, expected);
     Ok(())
