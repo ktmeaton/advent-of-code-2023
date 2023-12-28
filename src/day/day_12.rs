@@ -1,142 +1,121 @@
 use crate::day::Part;
 use crate::utils;
 
-use cached::proc_macro::cached;
-use cached::UnboundCache;
+use cached::{proc_macro::cached, UnboundCache};
 use color_eyre::eyre::{Report, Result};
 use itertools::Itertools;
 use log::{debug, info};
-use onig::Regex;
 
 /// Day 12 - Hot Springs
 ///
 /// Recursions + memoization
 pub fn run(part: &Part) -> Result<usize, Report> {
-    // Parse puzzle input
-    let input = utils::read_to_string("data/day_12_test.txt")?;
+    // Parse puzzle input into lines
+    let input = utils::read_to_string("data/day_12.txt")?;
     let lines = input.split('\n').map(|l| l.split(' ').collect_vec()).collect_vec();
 
-    // trim leading and trailing periods
-    // let re = Regex::new("^[\\.]*|[\\.]*$").unwrap();
-    let springs = "???.###";
-    // actual =   ".#.###.#.######";
-    let expected = [1,1, 3];
-    debug!("springs: {springs}, nums: {expected:?}, i: 0");
-    let result = count(&springs, &expected, "");
+    // sum up the possible arrangements
+    let result = lines
+        .into_iter()
+        .enumerate()
+        //.take_while(|(i, _l)| *i == 0)
+        .map(|(i, l)| {
+            let springs = l[0];
+            let damage = l[1].split(',').filter_map(|s| s.parse::<usize>().ok()).collect_vec();
 
-    // let cache = ARRANGEMENTS.lock().unwrap();
-    // debug!("cache: {cache:?}");
-    // std::mem::drop(cache);
+            // set unfold level for part 2
+            let unfold = match *part {
+                Part::Part1 => 1,
+                Part::Part2 => 5,
+            };
+            let springs = (0..unfold).map(|_| springs).join("?").chars().join("");
+            let damage = damage.iter().cycle().take(damage.len() * unfold).cloned().collect_vec();
 
-    // let result = lines
-    //     .into_iter()
-    //     .enumerate()
-    //     //.take_while(|(i, l)| *i == 0)
-    //     .map(|(i, l)| {
-    //         let springs = l[0];
-    //         let damaged = l[1].split(',').filter_map(|s| s.parse::<usize>().ok()).collect_vec();
-
-    //         // set unfold level for part 2
-    //         let unfold = match *part {
-    //             Part::Part1 => 1,
-    //             Part::Part2 => 5,
-    //         };
-    //         let springs = (0..unfold).map(|_| springs).join("?").chars().join("");
-    //         let damaged =
-    //             damaged.iter().cycle().take(damaged.len() * unfold).cloned().collect_vec();
-
-    //         debug!("i: {i}, springs: {springs}, damaged: {damaged:?}");
-    //         count(&springs, &damaged)
-    //     })
-    //     .sum();
+            // let springs = ".??..??...?##.";
+            // let damage = [1, 1, 3];
+            debug!("i: {i}, springs: {springs}, damage: {damage:?}");
+            arrangements(&springs, &damage, "", "")
+        })
+        .sum();
 
     info!("Answer: {result}");
     Ok(result)
 }
 
-/// Recursive counting function, for learning memoization.
+/// Recursive spring damage function, for learning memoization.
 ///
-/// Author: @HyperNeutrino
+/// Inspired by the following pieces of code.
+///
+/// Author: Diderkdm
+/// Source:  https://www.reddit.com/r/adventofcode/comments/18ge41g/comment/kd221yp
+///
+/// Author: HyperNeutrino
 /// Source: https://www.youtube.com/watch?v=g3Ms5e7Jdqo
-// #[cached(
-//     type = "UnboundCache<String, usize>",
-//     create = "{ UnboundCache::new() }",
-//     convert = r#"{ format!("{cfg} {nums:?}") }"#
-// )]
-fn count(cfg: &str, nums: &[usize], prev: &str) -> usize {
-    // easy exits
-    let valid = is_valid(cfg, nums);
-    debug!("    hyp: {}, valid: {valid}, prev: {prev}, cfg: {cfg}, nums: {nums:?}", prev.to_owned() + cfg);
-    if !valid || cfg == "" || nums.is_empty() || !cfg.contains("?"){
-        return valid as usize
+#[cached(
+    type = "UnboundCache<String, usize>",
+    create = "{ UnboundCache::new() }",
+    convert = r#"{ format!("{springs} {damage:?}") }"#
+)]
+fn arrangements(springs: &str, damage: &[usize], prev: &str, indent: &str) -> usize {
+    let mut result = 0;
+
+    // check for recursion bottoming out
+    if damage.is_empty() {
+        return !springs.contains('#') as usize;
     }
+    // this test might not be necessary?
+    // if springs == "" {
+    //     return damage.is_empty() as usize
+    // }
 
-    let mut hypotheses = Vec::new();
-    let s = &cfg[..1];
+    // separate the damage into what we are currently evaluting, and what comes next
+    let (curr_dmg, next_dmg) = (&damage[0], &damage[1..]);
+    // the remaining springs must be at least this long, otherwise there is more expected
+    // damage than is possible, factors in damage springs and at least one gap (. or ?)
+    let l = springs.len() - next_dmg.iter().sum::<usize>() - next_dmg.len() - curr_dmg;
+    //debug!("{indent}prev: {prev}, springs: {springs}, damage: {damage:?}, l: {l}");
+    let indent = format!("{indent}\t");
+    for i in 0..=l {
+        //debug!("{indent}i: {i}");
+        if springs[..i].contains('#') {
+            break;
+        }
+        let nxt = i + curr_dmg;
+        // focus on arrangements where springs are long enough to fulfill damage pattern
+        // and don't contain any operational springs (.)
+        if nxt <= springs.len() && !springs[i..nxt].contains('.') {
+            match nxt == springs.len() {
+                true => {
+                    let prev = format!("{prev}{}", &springs[..nxt].replace('?', "#"));
+                    let springs = "";
+                    result += arrangements(springs, next_dmg, &prev, &indent);
+                    if result > 0 {
+                        debug!("{indent}{prev}");
+                    }
+                }
+                false => {
+                    if springs[nxt..nxt + 1] != *"#" {
+                        let prev = prev.to_string()
+                            + &springs[..i].replace('?', ".")
+                            + &springs[i..nxt].replace('?', "#")
+                            + ".";
+                        let springs = &springs[nxt + 1..];
+                        // cache inspection, simply for nice debugging output
+                        let c = ARRANGEMENTS.lock().unwrap();
+                        let seen = c.get_store().get(&format!("{springs} {next_dmg:?}")).is_some();
+                        std::mem::drop(c);
+                        result += arrangements(springs, next_dmg, &prev, &indent);
 
-    if s == "." || s == "?" {
-        let cfg = &cfg[1..];
-        let prev = prev.to_owned() + ".";
-        hypotheses.push((cfg, nums, prev));
-    }
-    if s == "#" || s == "?" {
-        let d = nums[0];
-        let prev = prev.to_string() + "#".repeat(d).as_str();
-        let (cfg, nums, prev) = match cfg.len() > d {
-            true => (&cfg[d + 1..], &nums[1..], prev.to_string() + &cfg[d..=d]),
-            false => ("", &nums[nums.len()..], prev),
-        };
-        hypotheses.push((cfg, nums, prev));
-    };
-
-    hypotheses
-        .into_iter()
-        .filter_map(|(cfg, nums, prev)| {
-            let valid = is_valid(cfg, nums);
-            if !valid {
-                debug!("    hyp: {}, valid: {valid}", prev.to_owned() + cfg);
+                        if result > 0 && next_dmg.len() == 1 && seen {
+                            debug!("{indent}{prev}{}", &springs.replace('?', "#"));
+                        }
+                    }
+                }
             }
-            valid.then(|| count(cfg, nums, &prev))
-        })
-        .sum()
+        }
+    }
+    return result;
 }
-
-// #[cached(
-//     type = "UnboundCache<String, bool>",
-//     create = "{ UnboundCache::new() }",
-//     convert = r#"{ format!("{springs} {expected:?}") }"#
-// )]
-fn is_valid(springs: &str, expected: &[usize]) -> bool {
-    let mut pattern = expected.iter().map(|e| format!("[#|\\?]{{{e}}}")).join("[\\.|\\?]+");
-    pattern = "(?<!.*#.*)".to_string() + &pattern + "(?!.*#.*)";
-    Regex::new(&pattern).unwrap().find(springs).is_some()
-}
-
-// fn is_valid(cfg: &str, nums: &[usize]) -> bool {
-
-//     if cfg == "" {
-//         return nums.is_empty()
-//     }
-
-//     if nums.is_empty() {
-//         return !cfg.contains("#")
-//     }
-
-//     // trim leading and trailing periods
-//     let re = Regex::new("^[\\.]*|[\\.]*$").unwrap();
-//     let cfg = re.replace_all(cfg, "");
-
-//     // check expected damage (next and total)
-//     let d = nums[0];
-//     let total_damage = nums.iter().sum::<usize>();
-//     let potential_damage = cfg.chars().filter(|c| *c != '.').count();
-//     if d > cfg.len() || potential_damage < total_damage || cfg[..d].contains(".") || (cfg.len() > d && cfg[d..d+1] == *"#") {
-//         return false
-//     }
-
-//     true
-
-// }
 
 #[test]
 fn part_1() -> Result<(), Report> {
@@ -148,7 +127,7 @@ fn part_1() -> Result<(), Report> {
 
 #[test]
 fn part_2() -> Result<(), Report> {
-    let expected = 7633;
+    let expected = 23903579139437;
     let observed = run(&Part::Part2)?;
     assert_eq!(observed, expected);
     Ok(())
